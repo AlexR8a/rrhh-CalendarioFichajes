@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Crear Tienda</title>
+</head>
+<body>
+  <h1>Crear nueva tienda</h1>
+  <form id="formTienda">
+    <input type="text" name="nombre" placeholder="Nombre tienda" required><br>
+    <input type="text" name="direccion" placeholder="Dirección"><br>
+    <input type="number" name="id_jefe" placeholder="ID del jefe (opcional)"><br>
+    <button type="submit">Crear Tienda</button>
+  </form>
+
+  <script>
+    document.getElementById("formTienda").addEventListener("submit", async e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      const res = await fetch("http://localhost:3000/api/tiendas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      alert(json.mensaje || json.error);
+    });
+  </script>
+</body>
+</html>
