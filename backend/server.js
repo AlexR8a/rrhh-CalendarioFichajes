@@ -3,6 +3,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const usuariosRoutes = require('./routes/usuarios');
 const tiendasRoutes = require('./routes/tiendas');
+const turnosRoutes = require('./routes/turnos');
 
 const app = express();
 const PORT = 3000;
@@ -12,6 +13,7 @@ app.use(bodyParser.json());
 
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/tiendas', tiendasRoutes);
+app.use('/api/turnos', turnosRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor en http://localhost:${PORT}`);

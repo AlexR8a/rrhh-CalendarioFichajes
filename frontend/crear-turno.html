@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Crear Turno</title>
+  <style>
+    label { display: block; margin-top: 10px; }
+    input, select, button { margin-top: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Crear Turno para una Tienda</h1>
+
+  <form id="formTurno">
+    <label for="tienda">Tienda:</label>
+    <select id="tienda" required></select>
+
+    <label for="tipoTurno">Tipo de turno:</label>
+    <select id="tipoTurno" required></select>
+
+    <label for="horaInicio">Hora de inicio:</label>
+    <input type="time" id="horaInicio" required>
+
+    <label for="horaFin">Hora de fin:</label>
+    <input type="time" id="horaFin" required>
+
+    <button type="submit">Crear turno</button>
+  </form>
+
+  <p id="mensaje"></p>
+
+  <script>
+    async function cargarDatos() {
+      const [tiendas, tiposTurno] = await Promise.all([
+        fetch('http://localhost:3000/api/tiendas').then(r => r.json()),
+        fetch('http://localhost:3000/api/tipos-turno').then(r => r.json())
+      ]);
+
+      const selTienda = document.getElementById('tienda');
+      const selTipo = document.getElementById('tipoTurno');
+
+      tiendas.forEach(t => {
+        selTienda.innerHTML += `<option value="${t.id_tienda}">${t.nombre}</option>`;
+      });
+
+      tiposTurno.forEach(tt => {
+        selTipo.innerHTML += `<option value="${tt.id_tipo_turno}">${tt.nombre}</option>`;
+      });
+    }
+
+    document.getElementById('formTurno').onsubmit = async (e) => {
+      e.preventDefault();
+      const datos = {
+        id_tienda: parseInt(document.getElementById('tienda').value),
+        id_tipo_turno: parseInt(document.getElementById('tipoTurno').value),
+        hora_inicio: document.getElementById('horaInicio').value,
+        hora_fin: document.getElementById('horaFin').value,
+      };
+
+      const res = await fetch('http://localhost:3000/api/turnos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datos)
+      });
+
+      const json = await res.json();
+      document.getElementById('mensaje').textContent = json.error ? '❌ Error: ' + json.error : '✅ Turno creado correctamente';
+    };
+
+    cargarDatos();
+  </script>
+</body>
+</html>
