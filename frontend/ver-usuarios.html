@@ -2,26 +2,50 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Lista de Usuarios</title>
+  <title>Usuarios con Tienda</title>
 </head>
 <body>
-  <h1>Usuarios Registrados</h1>
+  <h1>Usuarios registrados</h1>
   <table border="1" id="tablaUsuarios">
     <thead>
-      <tr><th>ID</th><th>Nombre</th><th>Email</th><th>Rol</th></tr>
+      <tr>
+        <th>ID</th>
+        <th>Nombre</th>
+        <th>Email</th>
+        <th>Rol</th>
+        <th>ID Tienda</th>
+        <th>Nombre Tienda</th>
+        <th>Fecha Alta</th>
+      </tr>
     </thead>
     <tbody></tbody>
   </table>
 
   <script>
-    fetch("http://localhost:3000/api/usuarios")
+    fetch("http://localhost:3000/api/usuarios/vista")
       .then(res => res.json())
       .then(usuarios => {
         const tbody = document.querySelector("#tablaUsuarios tbody");
-        usuarios.forEach(u => {
-          const fila = `<tr><td>${u.id_usuario}</td><td>${u.nombre}</td><td>${u.email}</td><td>${u.rol}</td></tr>`;
-          tbody.innerHTML += fila;
-        });
+        if (!usuarios.length) {
+          tbody.innerHTML = '<tr><td colspan="7">No hay usuarios</td></tr>';
+        } else {
+          usuarios.forEach(u => {
+            const fila = `<tr>
+              <td>${u.id_usuario}</td>
+              <td>${u.nombre}</td>
+              <td>${u.email}</td>
+              <td>${u.rol}</td>
+              <td>${u.id_tienda || '-'}</td>
+              <td>${u.nombre_tienda || '-'}</td>
+              <td>${u.fecha_alta || '-'}</td>
+            </tr>`;
+            tbody.innerHTML += fila;
+          });
+        }
+      })
+      .catch(err => {
+        console.error("Error al obtener usuarios:", err);
+        document.querySelector("#tablaUsuarios tbody").innerHTML = '<tr><td colspan="7">Error al cargar datos</td></tr>';
       });
   </script>
 </body>

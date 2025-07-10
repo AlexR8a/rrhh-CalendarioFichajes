@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Crear Trabajador</title>
+</head>
+<body>
+  <h1>Crear nuevo trabajador</h1>
+  <form id="formTrabajador">
+    <input type="text" name="nombre" placeholder="Nombre" required><br>
+    <input type="email" name="email" placeholder="Email" required><br>
+    <input type="password" name="contraseña" placeholder="Contraseña" required><br>
+    
+    <label for="id_tienda">Tienda:</label>
+    <select name="id_tienda" id="id_tienda" required></select><br>
+    
+    <button type="submit">Crear Trabajador</button>
+  </form>
+
+  <script>
+    // Cargar tiendas al cargar la página
+    fetch("http://localhost:3000/api/tiendas")
+      .then(res => res.json())
+      .then(tiendas => {
+        const select = document.getElementById("id_tienda");
+        tiendas.forEach(t => {
+          const option = document.createElement("option");
+          option.value = t.id_tienda;
+          option.textContent = `${t.nombre} (${t.direccion || 'sin dirección'})`;
+          select.appendChild(option);
+        });
+      });
+
+    // Enviar formulario
+    document.getElementById("formTrabajador").addEventListener("submit", async e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      data.rol = "trabajador"; // fijo para esta página
+      const res = await fetch("http://localhost:3000/api/usuarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      alert(json.mensaje || json.error);
+    });
+  </script>
+</body>
+</html>

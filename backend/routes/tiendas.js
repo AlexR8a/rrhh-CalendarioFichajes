@@ -23,4 +23,15 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/vista', async (req, res) => {
+  try {
+    const vista = await db.select('*').from('VistaTiendas');
+    res.json(vista);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al obtener la vista de tiendas' });
+  }
+});
+
+
 module.exports = router;

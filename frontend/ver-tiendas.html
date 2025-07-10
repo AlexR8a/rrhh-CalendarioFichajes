@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Lista de Tiendas</title>
+</head>
+<body>
+  <h1>Tiendas registradas</h1>
+  <table border="1" id="tablaTiendas">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Nombre</th>
+        <th>Dirección</th>
+        <th>Jefe</th>
+        <th>Email del Jefe</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    fetch("http://localhost:3000/api/tiendas/vista")
+      .then(res => res.json())
+      .then(tiendas => {
+        const tbody = document.querySelector("#tablaTiendas tbody");
+        if (!tiendas.length) {
+          tbody.innerHTML = '<tr><td colspan="5">No hay tiendas</td></tr>';
+        } else {
+          tiendas.forEach(t => {
+            const fila = `<tr>
+              <td>${t.id_tienda}</td>
+              <td>${t.nombre_tienda}</td>
+              <td>${t.direccion || ''}</td>
+              <td>${t.nombre_jefe || '-'}</td>
+              <td>${t.email_jefe || '-'}</td>
+            </tr>`;
+            tbody.innerHTML += fila;
+          });
+        }
+      })
+      .catch(err => {
+        console.error("Error al cargar tiendas:", err);
+        document.querySelector("#tablaTiendas tbody").innerHTML = '<tr><td colspan="5">Error al cargar datos</td></tr>';
+      });
+  </script>
+</body>
+</html>
