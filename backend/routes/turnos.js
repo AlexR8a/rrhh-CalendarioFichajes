@@ -160,5 +160,28 @@ router.post('/requerimientos', async (req, res) => {
   }
 });
 
+router.post('/', async (req, res) => {
+  try {
+    const { id_tienda, id_tipo_turno, hora_inicio, hora_fin } = req.body;
+
+    if (!id_tienda || !hora_inicio || !hora_fin) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios' });
+    }
+
+    const [id_turno] = await db('Turnos').insert({
+      id_tienda,
+      id_tipo_turno: id_tipo_turno || null,
+      hora_inicio,
+      hora_fin
+    });
+
+    res.json({ mensaje: 'Turno creado correctamente', id_turno });
+  } catch (error) {
+    console.error('Error al crear turno:', error);
+    res.status(500).json({ error: 'Error interno al crear turno' });
+  }
+});
+
+
 
 module.exports = router;

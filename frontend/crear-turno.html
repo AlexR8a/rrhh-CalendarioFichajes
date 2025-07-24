@@ -15,8 +15,11 @@
     <label for="tienda">Tienda:</label>
     <select id="tienda" required></select>
 
-    <label for="tipoTurno">Tipo de turno:</label>
-    <select id="tipoTurno" required></select>
+    <label for="id_tipo_turno">Tipo de turno:</label>
+    <select name="id_tipo_turno" id="id_tipo_turno">
+      <option value="">-- Ninguno --</option>
+    </select>
+
 
     <label for="horaInicio">Hora de inicio:</label>
     <input type="time" id="horaInicio" required>
@@ -37,15 +40,24 @@
       ]);
 
       const selTienda = document.getElementById('tienda');
-      const selTipo = document.getElementById('tipoTurno');
 
       tiendas.forEach(t => {
         selTienda.innerHTML += `<option value="${t.id_tienda}">${t.nombre}</option>`;
       });
 
-      tiposTurno.forEach(tt => {
-        selTipo.innerHTML += `<option value="${tt.id_tipo_turno}">${tt.nombre}</option>`;
-      });
+      // Cargar tipos de turno
+      fetch('http://localhost:3000/api/tipos-turno')
+        .then(res => res.json())
+        .then(tipos => {
+          const select = document.getElementById("id_tipo_turno");
+          tipos.forEach(t => {
+            const opt = document.createElement("option");
+            opt.value = t.id_tipo_turno;
+            opt.textContent = t.nombre;
+            select.appendChild(opt);
+          });
+        });
+
     }
 
     document.getElementById('formTurno').onsubmit = async (e) => {
