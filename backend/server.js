@@ -20,7 +20,7 @@ app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/tiendas', tiendasRoutes);
 app.use('/api/turnos', turnosRoutes);
 app.use('/api/tipos-turno', tiposTurnoRoutes);
-app.use('/api/fichajes', fichajesRoutes); A
+app.use('/api/fichajes', fichajesRoutes); 
 
 // Inicio del servidor
 app.listen(PORT, () => {
