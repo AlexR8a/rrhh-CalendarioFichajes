@@ -4,22 +4,13 @@
   <meta charset="UTF-8" />
   <title>Asignar Turnos - Semana</title>
   <style>
-    table, th, td {
-      border: 1px solid black;
-      border-collapse: collapse;
-      padding: 5px;
-      vertical-align: top;
-      min-width: 140px;
-    }
-    th {
-      background: #eee;
-    }
-    .asignado {
-      background: #a4d4a4;
-      margin: 2px 0;
-      padding: 2px 5px;
-      cursor: pointer;
-    }
+    table, th, td { border: 1px solid #000; border-collapse: collapse; padding: 5px; vertical-align: top; min-width: 160px; }
+    th { background: #eee; }
+    .asignado { background: #a4d4a4; margin: 2px 0; padding: 2px 5px; cursor: pointer; }
+    .muted { color: #666; font-size: 12px; }
+    .warn { color: #b45309; font-size: 12px; }
+    .cell-head { display: flex; align-items: center; gap: 6px; }
+    .cell-head small { margin-left: 6px; }
   </style>
 </head>
 <body>
@@ -29,6 +20,7 @@
   <button id="btnSemanaAnt">Semana anterior</button>
   <button id="btnSemanaSig">Semana siguiente</button>
   <br /><br />
+
   <table id="tablaTurnos">
     <thead>
       <tr id="headerDias"></tr>
@@ -38,7 +30,8 @@
 
   <script>
     let semanaInicio = new Date();
-    semanaInicio.setDate(semanaInicio.getDate() - ((semanaInicio.getDay() + 6) % 7)); // lunes actual
+    semanaInicio.setDate(semanaInicio.getDate() - ((semanaInicio.getDay() + 6) % 7)); // lunes de esta semana
+
     let tiendas = [];
     let turnos = [];
     let asignaciones = [];
@@ -46,83 +39,85 @@
     let trabajadores = [];
     let requerimientos = [];
 
+    const API = 'http://localhost:3000/api';
+
     async function cargarTiendas() {
-      const res = await fetch("http://localhost:3000/api/tiendas");
+      const res = await fetch(`${API}/tiendas`);
       tiendas = await res.json();
-      const select = document.getElementById("selectTienda");
+      const select = document.getElementById('selectTienda');
       select.innerHTML = '';
       tiendas.forEach(t => {
-        const opt = document.createElement("option");
+        const opt = document.createElement('option');
         opt.value = t.id_tienda;
         opt.textContent = t.nombre;
         select.appendChild(opt);
       });
-      if (tiendas.length) {
-        cargarDatosSemana();
-      }
+      if (tiendas.length) cargarDatosSemana();
     }
 
-    function formatearFecha(date) {
-      return date.toISOString().slice(0, 10);
-    }
+    function fISO(date) { return date.toISOString().slice(0,10); }
 
     async function cargarDatosSemana() {
-      const tiendaId = document.getElementById("selectTienda").value;
-      const semanaISO = formatearFecha(semanaInicio);
+      const tiendaId = document.getElementById('selectTienda').value;
+      const semanaISO = fISO(semanaInicio);
 
-      const [turnosRes, asignacionesRes, trabajadoresRes, requerimientosRes] = await Promise.all([
-        fetch(`http://localhost:3000/api/turnos/tienda/${tiendaId}`).then(r => r.json()),
-        fetch(`http://localhost:3000/api/turnos/asignaciones?id_tienda=${tiendaId}&semana_inicio=${semanaISO}`).then(r => r.json()).then(data => {
-          fechasSemana = data.fechas;
-          return data.asignaciones;
-        }),
-        fetch(`http://localhost:3000/api/turnos/trabajadores/${tiendaId}`).then(r => r.json()),
-        fetch(`http://localhost:3000/api/turnos/requerimientos?id_tienda=${tiendaId}&semana_inicio=${semanaISO}`).then(r => r.json())
+      const [turnosRes, asignacionesRes, trabajadoresRes, reqRes] = await Promise.all([
+        fetch(`${API}/turnos/tienda/${tiendaId}`).then(r => r.json()),
+        fetch(`${API}/turnos/asignaciones?id_tienda=${tiendaId}&semana_inicio=${semanaISO}`).then(r => r.json()).then(d => { fechasSemana = d.fechas; return d.asignaciones; }),
+        fetch(`${API}/turnos/trabajadores/${tiendaId}`).then(r => r.json()),
+        fetch(`${API}/turnos/requerimientos?id_tienda=${tiendaId}&semana_inicio=${semanaISO}`).then(r => r.json()),
       ]);
 
       turnos = turnosRes;
       asignaciones = asignacionesRes;
       trabajadores = trabajadoresRes;
-      requerimientos = requerimientosRes.requerimientos || [];
+      requerimientos = reqRes.requerimientos || [];
 
       renderizarTabla();
     }
 
     function renderizarTabla() {
-      // Header con días
-      const header = document.getElementById("headerDias");
+      // Cabecera días
+      const header = document.getElementById('headerDias');
       header.innerHTML = '<th>Turno / Día</th>';
       fechasSemana.forEach(fecha => {
         const d = new Date(fecha);
         header.innerHTML += `<th>${d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' })}</th>`;
       });
 
-      // Cuerpo con turnos
-      const tbody = document.getElementById("bodyTurnos");
+      // Cuerpo turnos
+      const tbody = document.getElementById('bodyTurnos');
       tbody.innerHTML = '';
 
       turnos.forEach(turno => {
-        let fila = `<tr><td>${turno.nombre || 'Turno ' + turno.id_turno}<br>${turno.hora_inicio} - ${turno.hora_fin}</td>`;
+        const turnoId = Number(turno.id_turno ?? turno.id);
+        let fila = `<tr><td>${turno.nombre || 'Turno ' + turnoId}<br>${turno.hora_inicio} - ${turno.hora_fin}</td>`;
 
         fechasSemana.forEach(fecha => {
-          const asignsDia = asignaciones.filter(a => a.id_turno === turno.id_turno && a.fecha === fecha);
-          const req = requerimientos.find(r => r.id_turno === turno.id_turno && r.fecha === fecha);
-          const cantidadReq = req ? req.cantidad : 0;
+          const asignsDia = asignaciones.filter(a => Number(a.id_turno) === turnoId && a.fecha === fecha);
+          const req = requerimientos.find(r => r.id_turno === turnoId && r.fecha === fecha);
+          const cantidadReq = req ? Number(req.cantidad) : 0;
+          const asignadosCount = asignsDia.length;
+          const disableSelect = (!cantidadReq || asignadosCount >= cantidadReq);
 
-          let trabajadoresAsignadosHTML = asignsDia.map(a => {
+          const trabajadoresAsignadosHTML = asignsDia.map(a => {
             const trabajador = trabajadores.find(t => t.id_trabajador === a.id_trabajador);
             return `<div class="asignado" data-id="${a.id_asignacion}" title="Click para quitar">${trabajador ? trabajador.nombre : 'Desconocido'}</div>`;
           }).join('');
 
-          fila += `<td data-fecha="${fecha}" data-turno="${turno.id_turno}">
-            <label>Necesarios: <input type="number" min="0" class="inputCantidad" value="${cantidadReq}" style="width:50px;"></label>
-            <button class="btnGuardarCantidad">Guardar</button>
+          fila += `<td data-fecha="${fecha}" data-turno="${turnoId}">
+            <div class="cell-head">
+              <label>Necesarios: <input type="number" min="0" class="inputCantidad" value="${cantidadReq}" style="width:60px;"></label>
+              <button class="btnGuardarCantidad">Guardar</button>
+              <small class="muted">Asignados: ${asignadosCount}/${cantidadReq || 0}</small>
+            </div>
+            ${trabajadoresAsignadosHTML}
             <br>
-            ${trabajadoresAsignadosHTML}<br>
-            <select class="selectTrabajador">
+            <select class="selectTrabajador" ${disableSelect ? 'disabled title="Define y guarda la cantidad requerida primero"' : ''}>
               <option value="">-- Añadir trabajador --</option>
               ${trabajadores.map(t => `<option value="${t.id_trabajador}">${t.nombre}</option>`).join('')}
             </select>
+            ${disableSelect ? '<div class="warn">Primero guarda la cantidad requerida y/o no superes el máximo.</div>' : ''}
           </td>`;
         });
 
@@ -130,83 +125,76 @@
         tbody.innerHTML += fila;
       });
 
-      // Eventos para quitar asignaciones
+      // Quitar asignación
       document.querySelectorAll('.asignado').forEach(div => {
         div.onclick = async () => {
-          if(confirm('¿Quitar esta asignación?')){
+          if (confirm('¿Quitar esta asignación?')) {
             const id_asignacion = div.getAttribute('data-id');
-            await fetch('http://localhost:3000/api/turnos/desasignar', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id_asignacion })
-            });
-            cargarDatosSemana();
+            try {
+              const res = await fetch(`${API}/turnos/desasignar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_asignacion })
+              });
+              const json = await res.json().catch(() => ({}));
+              if (!res.ok) alert('Error al desasignar: ' + (json.error || res.statusText));
+              cargarDatosSemana();
+            } catch (e) { alert('Error de red al desasignar'); }
           }
         };
       });
 
-      // Eventos para asignar nuevo trabajador
-      document.querySelectorAll('.selectTrabajador').forEach(select => {
-        select.onchange = async () => {
-          const id_trabajador = select.value;
-          if (!id_trabajador) return;
-          const td = select.parentElement;
-          const fecha = td.getAttribute('data-fecha');
-          const id_turno = parseInt(td.getAttribute('data-turno'), 10);
-
-          // Aquí deberías usar el usuario logueado, para demo pongo 1
-          const asignado_por = 1;
-
-          await fetch('http://localhost:3000/api/turnos/asignar', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_trabajador, id_turno, fecha, asignado_por })
-          });
-          cargarDatosSemana();
-        };
+      // Deshabilitar select tras cambios en cantidad hasta guardar
+      document.querySelectorAll('.inputCantidad').forEach(inp => {
+        inp.addEventListener('input', () => {
+          const td = inp.closest('td');
+          const sel = td && td.querySelector('.selectTrabajador');
+          if (sel) { sel.disabled = true; sel.title = 'Guarda la cantidad para habilitar las asignaciones'; }
+        });
       });
 
-      // Eventos para guardar cantidad requerida
+      // Guardar cantidad requerida
       document.querySelectorAll('.btnGuardarCantidad').forEach(btn => {
         btn.onclick = async () => {
-          const td = btn.parentElement;
+          const td = btn.closest('td');
           const id_turno = parseInt(td.getAttribute('data-turno'), 10);
           const fecha = td.getAttribute('data-fecha');
           const cantidad = parseInt(td.querySelector('.inputCantidad').value, 10);
-
-          if (isNaN(cantidad) || cantidad < 0) {
-            alert('Cantidad inválida');
-            return;
-          }
-
-          const res = await fetch('http://localhost:3000/api/turnos/requerimientos', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_turno, fecha, cantidad })
+          if (isNaN(cantidad) || cantidad < 0) { alert('Cantidad inválida'); return; }
+          const res = await fetch(`${API}/turnos/requerimientos`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id_turno, fecha, cantidad })
           });
-
           const json = await res.json();
-          if(json.error) {
-            alert('Error: ' + json.error);
-          } else {
-            alert('Cantidad guardada');
+          if (json.error) { alert('Error: ' + json.error); } else { cargarDatosSemana(); }
+        };
+      });
+
+      // Asignar trabajador (requiere cantidad guardada y cupo disponible)
+      document.querySelectorAll('.selectTrabajador').forEach(select => {
+        select.onchange = async () => {
+          const id_trabajador = select.value; if (!id_trabajador) return;
+          const td = select.closest('td');
+          const fecha = td.getAttribute('data-fecha');
+          const id_turno = parseInt(td.getAttribute('data-turno'), 10);
+          const asignado_por = 1; // TODO: usuario autenticado
+          try {
+            const res = await fetch(`${API}/turnos/asignar`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id_trabajador, id_turno, fecha, asignado_por })
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok) { alert('Error al asignar: ' + (json.error || res.statusText)); select.value = ''; return; }
             cargarDatosSemana();
-          }
+          } catch (e) { alert('Error de red al asignar'); }
         };
       });
     }
 
-    document.getElementById("selectTienda").onchange = cargarDatosSemana;
-    document.getElementById("btnSemanaAnt").onclick = () => {
-      semanaInicio.setDate(semanaInicio.getDate() - 7);
-      cargarDatosSemana();
-    };
-    document.getElementById("btnSemanaSig").onclick = () => {
-      semanaInicio.setDate(semanaInicio.getDate() + 7);
-      cargarDatosSemana();
-    };
+    document.getElementById('selectTienda').onchange = cargarDatosSemana;
+    document.getElementById('btnSemanaAnt').onclick = () => { semanaInicio.setDate(semanaInicio.getDate() - 7); cargarDatosSemana(); };
+    document.getElementById('btnSemanaSig').onclick = () => { semanaInicio.setDate(semanaInicio.getDate() + 7); cargarDatosSemana(); };
 
     cargarTiendas();
   </script>
 </body>
 </html>
+

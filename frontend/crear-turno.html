@@ -6,6 +6,7 @@
   <style>
     label { display: block; margin-top: 10px; }
     input, select, button { margin-top: 5px; }
+    #mensaje { margin-top: 10px; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -20,12 +21,29 @@
       <option value="">-- Ninguno --</option>
     </select>
 
+    <label>Hora de inicio:</label>
+    <div>
+      <select id="horaInicioHora" required></select>
+      :
+      <select id="horaInicioMin" required>
+        <option value="00">00</option>
+        <option value="15">15</option>
+        <option value="30">30</option>
+        <option value="45">45</option>
+      </select>
+    </div>
 
-    <label for="horaInicio">Hora de inicio:</label>
-    <input type="time" id="horaInicio" required>
-
-    <label for="horaFin">Hora de fin:</label>
-    <input type="time" id="horaFin" required>
+    <label>Hora de fin:</label>
+    <div>
+      <select id="horaFinHora" required></select>
+      :
+      <select id="horaFinMin" required>
+        <option value="00">00</option>
+        <option value="15">15</option>
+        <option value="30">30</option>
+        <option value="45">45</option>
+      </select>
+    </div>
 
     <button type="submit">Crear turno</button>
   </form>
@@ -40,33 +58,69 @@
       ]);
 
       const selTienda = document.getElementById('tienda');
-
       tiendas.forEach(t => {
-        selTienda.innerHTML += `<option value="${t.id_tienda}">${t.nombre}</option>`;
+        const opt = document.createElement('option');
+        opt.value = t.id_tienda;
+        opt.textContent = t.nombre;
+        selTienda.appendChild(opt);
       });
 
-      // Cargar tipos de turno
-      fetch('http://localhost:3000/api/tipos-turno')
-        .then(res => res.json())
-        .then(tipos => {
-          const select = document.getElementById("id_tipo_turno");
-          tipos.forEach(t => {
-            const opt = document.createElement("option");
-            opt.value = t.id_tipo_turno;
-            opt.textContent = t.nombre;
-            select.appendChild(opt);
-          });
-        });
-
+      const select = document.getElementById('id_tipo_turno');
+      tiposTurno.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id_tipo_turno;
+        opt.textContent = t.nombre;
+        select.appendChild(opt);
+      });
     }
+
+    // Rellenar horas 00..23
+    const fillHours = (sel) => {
+      for (let h = 0; h < 24; h++) {
+        const v = String(h).padStart(2, '0');
+        const opt = document.createElement('option');
+        opt.value = v; opt.textContent = v;
+        sel.appendChild(opt);
+      }
+    };
+    const hIni = document.getElementById('horaInicioHora');
+    const hFin = document.getElementById('horaFinHora');
+    fillHours(hIni); fillHours(hFin);
 
     document.getElementById('formTurno').onsubmit = async (e) => {
       e.preventDefault();
+      const tipoSelect = document.getElementById('id_tipo_turno');
+      const horaInicio = `${document.getElementById('horaInicioHora').value}:${document.getElementById('horaInicioMin').value}`;
+      const horaFin = `${document.getElementById('horaFinHora').value}:${document.getElementById('horaFinMin').value}`;
+
+      const toMinutes = (hhmm) => {
+        const [hh, mm] = String(hhmm).split(':').map(Number);
+        return hh * 60 + mm;
+      };
+      const start = toMinutes(horaInicio);
+      const end = toMinutes(horaFin);
+      const isQuarter = (m) => m % 15 === 0;
+
+      const msgEl = document.getElementById('mensaje');
+      const error = (m) => { msgEl.textContent = 'Error: ' + m; msgEl.style.color = 'red'; };
+      const ok = (m) => { msgEl.textContent = m; msgEl.style.color = 'green'; };
+
+      if (!isQuarter(start) || !isQuarter(end)) {
+        return error('Las horas deben estar en intervalos de 15 minutos.');
+      }
+      const duration = end - start;
+      if (duration <= 0) {
+        return error('La hora de fin debe ser posterior a la de inicio.');
+      }
+      if (duration > 240) {
+        return error('La duración máxima de un turno es de 4 horas.');
+      }
+
       const datos = {
         id_tienda: parseInt(document.getElementById('tienda').value),
-        id_tipo_turno: parseInt(document.getElementById('tipoTurno').value),
-        hora_inicio: document.getElementById('horaInicio').value,
-        hora_fin: document.getElementById('horaFin').value,
+        id_tipo_turno: tipoSelect.value ? parseInt(tipoSelect.value) : undefined,
+        hora_inicio: horaInicio,
+        hora_fin: horaFin,
       };
 
       const res = await fetch('http://localhost:3000/api/turnos', {
@@ -76,7 +130,11 @@
       });
 
       const json = await res.json();
-      document.getElementById('mensaje').textContent = json.error ? '❌ Error: ' + json.error : '✅ Turno creado correctamente';
+      if (json.error) {
+        error(json.error);
+      } else {
+        ok('Turno creado correctamente');
+      }
     };
 
     cargarDatos();

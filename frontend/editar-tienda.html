@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Editar Tienda</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #f7f7fb; color: #222; }
+    header { background: #1f2937; color: #fff; padding: 16px 20px; }
+    header h1 { margin: 0; font-size: 18px; }
+    main { max-width: 900px; margin: 24px auto; padding: 0 16px; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: 12px; color: #374151; }
+    input, select { padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
+    input:focus, select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+    .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+    button { padding: 10px 14px; border-radius: 6px; border: 1px solid transparent; cursor: pointer; font-weight: 600; }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-secondary { background: #fff; color: #111827; border-color: #d1d5db; }
+    .muted { color: #6b7280; font-size: 13px; }
+    .status { margin-top: 12px; font-size: 13px; }
+    .status.ok { color: #065f46; }
+    .status.err { color: #991b1b; }
+    .divider { height: 1px; background: #e5e7eb; margin: 16px 0; }
+    @media (max-width: 720px){ .row { grid-template-columns: 1fr; } }
+  </style>
+  <script>
+    // Usa host absoluto como en otras páginas
+    const API_PREFIX = 'http://localhost:3000/api';
+    const ENDPOINTS = {
+      tiendas: `${API_PREFIX}/tiendas`,
+      usuarios: `${API_PREFIX}/usuarios`,
+      updateTienda: (id) => `${API_PREFIX}/tiendas/${id}`,
+      updateRolUsuario: (id) => `${API_PREFIX}/usuarios/${id}/rol`,
+    };
+
+    function authHeaders() {
+      const headers = { 'Content-Type': 'application/json' };
+      const token = localStorage.getItem('token');
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      return headers;
+    }
+
+    async function safeFetch(url, options = {}) {
+      const res = await fetch(url, options);
+      const isJSON = res.headers.get('content-type')?.includes('application/json');
+      const data = isJSON ? await res.json().catch(() => null) : await res.text().catch(() => null);
+      if (!res.ok) {
+        const message = typeof data === 'string' ? data : (data?.message || JSON.stringify(data));
+        throw new Error(message || `Error ${res.status}`);
+      }
+      return data;
+    }
+  </script>
+</head>
+<body>
+  <header>
+    <h1>Editar Tienda</h1>
+  </header>
+  <main>
+    <div class="card">
+      <div class="field">
+        <label for="tiendaSelect">Selecciona una tienda</label>
+        <select id="tiendaSelect">
+          <option value="">-- Elegir --</option>
+        </select>
+        <div class="muted">Cargando tiendas y usuarios...</div>
+      </div>
+      <div class="divider"></div>
+
+      <form id="formTienda" style="display:none">
+        <div class="row">
+          <div class="field">
+            <label for="nombre">Nombre</label>
+            <input id="nombre" type="text" required placeholder="Nombre de la tienda" />
+          </div>
+          <div class="field">
+            <label for="direccion">Dirección</label>
+            <input id="direccion" type="text" placeholder="Dirección" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="jefe">Jefe de tienda</label>
+            <select id="jefe">
+              <option value="">-- Sin jefe asignado --</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn-secondary" id="btnReset">Descartar cambios</button>
+          <button type="submit" class="btn-primary">Guardar cambios</button>
+        </div>
+        <div class="status" id="status"></div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    let tiendas = [];
+    let usuarios = [];
+    let tiendaActual = null;
+
+    const el = (id) => document.getElementById(id);
+    const tiendaSelect = el('tiendaSelect');
+    const form = el('formTienda');
+    const statusEl = el('status');
+
+    async function cargarDatos() {
+      try {
+        const [tiendasRes, usuariosRes] = await Promise.all([
+          safeFetch(ENDPOINTS.tiendas, { headers: authHeaders() }),
+          safeFetch(ENDPOINTS.usuarios, { headers: authHeaders() }),
+        ]);
+        tiendas = Array.isArray(tiendasRes) ? tiendasRes : (tiendasRes?.data || []);
+        usuarios = Array.isArray(usuariosRes) ? usuariosRes : (usuariosRes?.data || []);
+
+        renderTiendas();
+        renderUsuarios();
+        document.querySelector('.muted').textContent = 'Listo';
+      } catch (err) {
+        document.querySelector('.muted').textContent = `Error cargando datos: ${err.message}`;
+      }
+    }
+
+    function renderTiendas() {
+      for (const t of tiendas) {
+        const opt = document.createElement('option');
+        opt.value = t.id_tienda ?? t.id ?? t.tienda_id ?? t.ID ?? t.Id;
+        opt.textContent = t.nombre || t.nombre_tienda || t.name || `Tienda ${opt.value}`;
+        opt.dataset.json = JSON.stringify(t);
+        tiendaSelect.appendChild(opt);
+      }
+    }
+
+    function renderUsuarios() {
+      const jefeSelect = el('jefe');
+      jefeSelect.innerHTML = '<option value="">-- Sin jefe asignado --</option>';
+      for (const u of usuarios) {
+        const id = u.id_usuario ?? u.id ?? u.usuario_id ?? u.ID ?? u.Id;
+        const nombre = [u.nombre, u.apellidos || u.apellido].filter(Boolean).join(' ') || u.email || `Usuario ${id}`;
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = nombre;
+        jefeSelect.appendChild(opt);
+      }
+    }
+
+    function rellenarFormulario(tienda) {
+      el('nombre').value = tienda.nombre || tienda.nombre_tienda || tienda.name || '';
+      el('direccion').value = tienda.direccion || tienda.address || '';
+      const jefeId = tienda.id_jefe || tienda.jefe || tienda.jefeId || '';
+      el('jefe').value = jefeId || '';
+    }
+
+    tiendaSelect.addEventListener('change', (e) => {
+      const id = e.target.value;
+      if (!id) {
+        form.style.display = 'none';
+        tiendaActual = null;
+        return;
+      }
+      const opt = e.target.options[e.target.selectedIndex];
+      const json = opt.dataset.json ? JSON.parse(opt.dataset.json) : null;
+      tiendaActual = json || tiendas.find(t => (t.id_tienda ?? t.id ?? t.tienda_id ?? t.ID) == id) || { id_tienda: id };
+      form.style.display = 'block';
+      statusEl.textContent = '';
+      rellenarFormulario(tiendaActual);
+    });
+
+    el('btnReset').addEventListener('click', () => {
+      if (tiendaActual) rellenarFormulario(tiendaActual);
+      statusEl.textContent = 'Cambios descartados';
+      statusEl.className = 'status';
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!tiendaActual) return;
+      const id = tiendaSelect.value;
+
+      const payload = {
+        nombre: el('nombre').value.trim(),
+        direccion: el('direccion').value.trim() || null,
+        id_jefe: el('jefe').value || null,
+      };
+
+      try {
+        // 1) Actualizar la tienda
+        await safeFetch(ENDPOINTS.updateTienda(id), {
+          method: 'PUT',
+          headers: authHeaders(),
+          body: JSON.stringify(payload),
+        });
+
+        // 2) Si hay jefe seleccionado, actualizar su rol
+        if (payload.id_jefe) {
+          try {
+            await safeFetch(ENDPOINTS.updateRolUsuario(payload.id_jefe), {
+              method: 'PUT',
+              headers: authHeaders(),
+              body: JSON.stringify({ rol: 'jefe' }),
+            });
+          } catch (err) {
+            // Fallback si no existe endpoint dedicado
+            await safeFetch(`${ENDPOINTS.usuarios}/${payload.id_jefe}`, {
+              method: 'PUT',
+              headers: authHeaders(),
+              body: JSON.stringify({ rol: 'jefe' }),
+            });
+          }
+        }
+
+        statusEl.textContent = 'Tienda actualizada correctamente';
+        statusEl.className = 'status ok';
+
+      } catch (err) {
+        statusEl.textContent = `Error: ${err.message}`;
+        statusEl.className = 'status err';
+      }
+    });
+
+    // Inicio
+    cargarDatos();
+  </script>
+</body>
+</html>
+

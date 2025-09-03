@@ -51,6 +51,23 @@ router.get('/vista', async (req, res) => {
   }
 });
 
+// Actualizar rol de un usuario
+router.put('/:id/rol', async (req, res) => {
+  const { id } = req.params;
+  const { rol } = req.body || {};
+  if (!rol) return res.status(400).json({ error: 'Rol requerido' });
+  try {
+    const updated = await db('Usuarios')
+      .where({ id_usuario: id })
+      .update({ rol });
+    if (!updated) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json({ mensaje: 'Rol actualizado correctamente' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al actualizar rol' });
+  }
+});
+
 
 
 
