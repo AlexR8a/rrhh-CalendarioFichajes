@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Editar Tienda</title>
+</head>
+<body>
+  <h1>Editar Tienda</h1>
+
+  <label for="selectTienda">Selecciona una tienda:</label>
+  <select id="selectTienda"></select>
+
+  <form id="formEditar">
+    <input type="text" id="nombre" placeholder="Nombre" required><br>
+    <input type="text" id="direccion" placeholder="Dirección"><br>
+    <label for="jefe">Jefe de tienda:</label>
+    <select id="jefe">
+      <option value="">Sin jefe</option>
+    </select><br>
+    <button type="submit">Guardar cambios</button>
+  </form>
+
+  <script>
+    const selectTienda = document.getElementById('selectTienda');
+    const selectJefe = document.getElementById('jefe');
+    let tiendas = [];
+
+    async function cargarDatos() {
+      tiendas = await fetch('http://localhost:3000/api/tiendas').then(r => r.json());
+      const usuarios = await fetch('http://localhost:3000/api/usuarios').then(r => r.json());
+
+      tiendas.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id_tienda;
+        opt.textContent = t.nombre;
+        selectTienda.appendChild(opt);
+      });
+
+      usuarios.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.id_usuario;
+        opt.textContent = `${u.nombre} (${u.rol})`;
+        selectJefe.appendChild(opt);
+      });
+
+      if (tiendas.length) {
+        selectTienda.value = tiendas[0].id_tienda;
+        rellenarFormulario(tiendas[0]);
+      }
+    }
+
+    function rellenarFormulario(tienda) {
+      document.getElementById('nombre').value = tienda.nombre;
+      document.getElementById('direccion').value = tienda.direccion || '';
+      selectJefe.value = tienda.id_jefe || '';
+    }
+
+    selectTienda.addEventListener('change', e => {
+      const tienda = tiendas.find(t => t.id_tienda == e.target.value);
+      if (tienda) rellenarFormulario(tienda);
+    });
+
+    document.getElementById('formEditar').addEventListener('submit', async e => {
+      e.preventDefault();
+      const id = selectTienda.value;
+      const data = {
+        nombre: document.getElementById('nombre').value,
+        direccion: document.getElementById('direccion').value,
+        id_jefe: selectJefe.value || null
+      };
+      const res = await fetch(`http://localhost:3000/api/tiendas/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      alert(json.mensaje || json.error);
+    });
+
+    cargarDatos();
+  </script>
+</body>
+</html>

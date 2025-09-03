@@ -33,5 +33,28 @@ router.get('/vista', async (req, res) => {
   }
 });
 
+// Actualizar una tienda existente y asignar jefe
+router.put('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { nombre, direccion, id_jefe } = req.body;
+
+  try {
+    await db('Tiendas')
+      .where({ id_tienda: id })
+      .update({ nombre, direccion, id_jefe: id_jefe || null });
+
+    if (id_jefe) {
+      await db('Usuarios')
+        .where({ id_usuario: id_jefe })
+        .update({ rol: 'jefe' });
+    }
+
+    res.json({ mensaje: 'Tienda actualizada correctamente' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al actualizar tienda' });
+  }
+});
+
 
 module.exports = router;
