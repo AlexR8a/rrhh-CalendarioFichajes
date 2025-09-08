@@ -3,21 +3,31 @@
 
 const db = require('./connection');
 
+async function getUsuariosPasswordColumn() {
+  try {
+    const info = await db('Usuarios').columnInfo();
+    const candidates = ['contrasena_hash', 'contrase\u00f1a_hash', 'password'];
+    for (const c of candidates) {
+      if (info[c]) return c;
+    }
+  } catch (_) {}
+  return null;
+}
+
 async function upsertUsuario({ nombre, email, password, rol }) {
   // Devuelve { id_usuario }
   const existing = await db('Usuarios').where({ email }).first();
-  if (existing) return { id_usuario: existing.id_usuario || existing.id || existing.ID };
+  const pwdCol = await getUsuariosPasswordColumn();
+  if (existing) {
+    // Opcional: resetear password si SEED_RESET_PASSWORDS=1
+    if (process.env.SEED_RESET_PASSWORDS === '1' && pwdCol) {
+      await db('Usuarios').where({ email }).update({ [pwdCol]: typeof password === 'string' ? password : '', rol });
+    }
+    return { id_usuario: existing.id_usuario || existing.id || existing.ID };
+  }
 
   const record = { nombre, email, rol };
-  if (typeof password === 'string') {
-    // Intentar con la columna existente (puede tener mojibake)
-    try { record['contrase��a_hash'] = password; } catch (_) {}
-    if (!('contrase��a_hash' in record)) record['contrasena_hash'] = password;
-  } else {
-    // sin contraseña inicial
-    try { record['contrase��a_hash'] = null; } catch (_) {}
-    if (!('contrase��a_hash' in record)) record['contrasena_hash'] = null;
-  }
+  if (pwdCol) record[pwdCol] = typeof password === 'string' ? password : '';
 
   const [id_usuario] = await db('Usuarios').insert(record);
   return { id_usuario };
@@ -50,12 +60,12 @@ async function main() {
     out.tiendas.push(tNorte, tSur);
 
     // Admins
-    const a1 = await upsertUsuario({ nombre: 'Admin Uno', email: 'admin1@example.com', password: 'Admin1234', rol: 'admin' });
-    const a2 = await upsertUsuario({ nombre: 'Admin Dos', email: 'admin2@example.com', password: 'Admin1234', rol: 'admin' });
+    const a1 = await upsertUsuario({ nombre: 'Admin Uno', email: 'admin1@example.com', password: 'Admin1234', rol: 'administrador' });
+    const a2 = await upsertUsuario({ nombre: 'Admin Dos', email: 'admin2@example.com', password: 'Admin1234', rol: 'administrador' });
     out.admins.push({ id_usuario: a1.id_usuario, email: 'admin1@example.com', password: 'Admin1234' });
     out.admins.push({ id_usuario: a2.id_usuario, email: 'admin2@example.com', password: 'Admin1234' });
 
-    // Jefes (con contraseña) y asignación a tienda
+    // Jefes y asignación a tienda
     const j1 = await upsertUsuario({ nombre: 'Jefe Norte', email: 'jefe1@example.com', password: 'Jefe1234', rol: 'jefe' });
     const j2 = await upsertUsuario({ nombre: 'Jefe Sur', email: 'jefe2@example.com', password: 'Jefe1234', rol: 'jefe' });
     await setJefeEnTienda(tNorte.id_tienda || tNorte.ID || tNorte.id, j1.id_usuario);
@@ -73,7 +83,7 @@ async function main() {
 
     console.log('Usuarios de prueba creados/asegurados:');
     console.table([
-      ...out.admins.map(u => ({ rol: 'admin', ...u })),
+      ...out.admins.map(u => ({ rol: 'administrador', ...u })),
       ...out.jefes.map(u => ({ rol: 'jefe', ...u })),
       ...out.trabajadores.map(u => ({ rol: 'trabajador', ...u })),
     ]);
@@ -88,4 +98,3 @@ async function main() {
 }
 
 main();
-

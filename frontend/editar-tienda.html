@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -6,9 +6,12 @@
   <title>Editar Tienda</title>
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #f7f7fb; color: #222; }
-    header { background: #1f2937; color: #fff; padding: 16px 20px; }
+    header { background: #f5f5f5; color: #111; padding: 12px 16px; border-bottom: 1px solid #ddd; }
     header h1 { margin: 0; font-size: 18px; }
     main { max-width: 900px; margin: 24px auto; padding: 0 16px; }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 12px 16px; }
+    nav a { margin-right: 10px; }
+    footer { background:#f5f5f5; border-top:1px solid #ddd; padding:12px 16px; margin-top:24px; }
     .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .field { display: flex; flex-direction: column; gap: 6px; }
@@ -27,7 +30,7 @@
     @media (max-width: 720px){ .row { grid-template-columns: 1fr; } }
   </style>
   <script>
-    // Usa host absoluto como en otras páginas
+    // Usa host absoluto como en otras pÃ¡ginas
     const API_PREFIX = 'http://localhost:3000/api';
     const ENDPOINTS = {
       tiendas: `${API_PREFIX}/tiendas`,
@@ -70,10 +73,8 @@
   </script>
 </head>
 <body>
-  <header>
-    <h1>Editar Tienda</h1>
-  </header>
-  <main>
+  <header>\n  <div class="wrap">\n    <strong>RRHH</strong>\n    <nav style="display:inline-block; margin-left:16px;">\n      <a href="index.html">Inicio</a>\n      <a href="ver-usuarios.html">Usuarios</a>\n      <a href="ver-tiendas.html">Tiendas</a>\n      <a href="asignar-turnos.html">Asignar turnos</a>\n    </nav>\n    <span style="float:right"><a href="login.html">Iniciar sesión</a></span>\n  </div>\n</header>
+  <main>`n    <div class="wrap"><h1>Editar Tienda</h1></div>
     <div class="card">
       <div class="field">
         <label for="tiendaSelect">Selecciona una tienda</label>
@@ -91,8 +92,8 @@
             <input id="nombre" type="text" required placeholder="Nombre de la tienda" />
           </div>
           <div class="field">
-            <label for="direccion">Dirección</label>
-            <input id="direccion" type="text" placeholder="Dirección" />
+            <label for="direccion">DirecciÃ³n</label>
+            <input id="direccion" type="text" placeholder="DirecciÃ³n" />
           </div>
         </div>
 
@@ -241,6 +242,5 @@
 
     // Inicio
     cargarDatos();
-  </script>
-</body>
+  </script>`n  <footer><div class="wrap"><small>© <span id="y"></span> RRHH</small></div></footer>`n  <script>document.getElementById("y").textContent = new Date().getFullYear();</script>`n</body>
 </html>

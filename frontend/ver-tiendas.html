@@ -2,11 +2,38 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Lista de Tiendas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tiendas - RRHH</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; margin: 0; background: #fff; color: #111; }
+    header, footer { background: #f5f5f5; border-bottom: 1px solid #ddd; }
+    footer { border-top: 1px solid #ddd; border-bottom: 0; margin-top: 24px; }
+    .wrap { max-width: 1000px; margin: 0 auto; padding: 12px 16px; }
+    nav a { margin-right: 10px; }
+    main h1 { margin: 16px 0; font-size: 22px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 6px 8px; }
+    th { background: #f2f2f2; }
+    small.muted { color: #666; }
+  </style>
 </head>
 <body>
-  <h1>Tiendas registradas</h1>
-  <table border="1" id="tablaTiendas">
+  <header>
+    <div class="wrap">
+      <strong>RRHH</strong>
+      <nav style="display:inline-block; margin-left:16px;">
+        <a href="index.html">Inicio</a>
+        <a href="ver-usuarios.html">Usuarios</a>
+        <a href="ver-tiendas.html">Tiendas</a>
+        <a href="asignar-turnos.html">Asignar turnos</a>
+      </nav>
+      <span style="float:right"><a href="login.html">Iniciar sesión</a></span>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <h1>Tiendas registradas</h1>
+    <table id="tablaTiendas">
     <thead>
       <tr>
         <th>ID</th>
@@ -17,9 +44,17 @@
       </tr>
     </thead>
     <tbody></tbody>
-  </table>
+    </table>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <small class="muted">© <span id="y"></span> RRHH</small>
+    </div>
+  </footer>
 
   <script>
+    document.getElementById('y').textContent = new Date().getFullYear();
     fetch("http://localhost:3000/api/tiendas/vista")
       .then(res => res.json())
       .then(tiendas => {

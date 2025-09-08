@@ -2,16 +2,53 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Crear Tienda</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Crear Tienda - RRHH</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; margin: 0; background: #fff; color: #111; }
+    header, footer { background: #f5f5f5; border-bottom: 1px solid #ddd; }
+    footer { border-top: 1px solid #ddd; border-bottom: 0; margin-top: 24px; }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 12px 16px; }
+    nav a { margin-right: 10px; }
+    main h1 { margin: 16px 0; font-size: 22px; }
+    label { display: block; margin: 8px 0 4px; }
+    input { padding: 8px; width: 100%; max-width: 420px; }
+    button { margin-top: 10px; padding: 8px 12px; }
+    small.muted { color: #666; }
+  </style>
 </head>
 <body>
-  <h1>Crear nueva tienda</h1>
-  <form id="formTienda">
-    <input type="text" name="nombre" placeholder="Nombre tienda" required><br>
-    <input type="text" name="direccion" placeholder="Dirección"><br>
-    <input type="number" name="id_jefe" placeholder="ID del jefe (opcional)"><br>
-    <button type="submit">Crear Tienda</button>
-  </form>
+  <header>
+    <div class="wrap">
+      <strong>RRHH</strong>
+      <nav style="display:inline-block; margin-left:16px;">
+        <a href="index.html">Inicio</a>
+        <a href="ver-usuarios.html">Usuarios</a>
+        <a href="ver-tiendas.html">Tiendas</a>
+        <a href="asignar-turnos.html">Asignar turnos</a>
+      </nav>
+      <span style="float:right"><a href="login.html">Iniciar sesión</a></span>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <h1>Crear nueva tienda</h1>
+    <form id="formTienda">
+      <label>Nombre tienda</label>
+      <input type="text" name="nombre" placeholder="Nombre tienda" required>
+      <label>Dirección</label>
+      <input type="text" name="direccion" placeholder="Dirección">
+      <label>ID del jefe (opcional)</label>
+      <input type="number" name="id_jefe" placeholder="ID del jefe (opcional)">
+      <button type="submit">Crear Tienda</button>
+    </form>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <small class="muted">© <span id="y"></span> RRHH</small>
+    </div>
+  </footer>
 
   <script>
     function requireAdmin() {
