@@ -29,8 +29,12 @@
   </table>
 
   <script>
+    // Calcular lunes de la semana en horario local (evita off-by-one)
     let semanaInicio = new Date();
-    semanaInicio.setDate(semanaInicio.getDate() - ((semanaInicio.getDay() + 6) % 7)); // lunes de esta semana
+    semanaInicio.setHours(0,0,0,0);
+    const dow = semanaInicio.getDay(); // 0..6 (domingo..sábado)
+    const offset = (dow + 6) % 7;      // 0 para lunes, 1 para martes, ... 6 para domingo
+    semanaInicio.setDate(semanaInicio.getDate() - offset);
 
     let tiendas = [];
     let turnos = [];
@@ -41,9 +45,27 @@
 
     const API = 'http://localhost:3000/api';
 
+    function getToken() { return localStorage.getItem('token') || ''; }
+    function decodePayload() {
+      try {
+        const t = getToken();
+        if (!t || !t.includes('.')) return null;
+        const b = t.split('.')[0].replace(/-/g,'+').replace(/_/g,'/');
+        const json = atob(b);
+        return JSON.parse(json);
+      } catch { return null; }
+    }
+    function authHeaders() {
+      const token = getToken();
+      const h = { 'Content-Type': 'application/json' };
+      if (token) h['Authorization'] = `Bearer ${token}`;
+      return h;
+    }
+
     async function cargarTiendas() {
       const res = await fetch(`${API}/tiendas`);
       tiendas = await res.json();
+      console.log('[asignar] tiendas cargadas:', tiendas);
       const select = document.getElementById('selectTienda');
       select.innerHTML = '';
       tiendas.forEach(t => {
@@ -52,6 +74,20 @@
         opt.textContent = t.nombre;
         select.appendChild(opt);
       });
+      // Si es jefe, seleccionar automáticamente su tienda y bloquear el selector
+      const me = decodePayload();
+      if (!me || me.rol !== 'jefe') {
+        alert('Acceso restringido: solo jefes de tienda');
+        window.location.href = 'login.html';
+        return;
+      }
+      const mine = tiendas.find(t => Number(t.id_jefe) === Number(me.uid));
+      if (!mine) {
+        alert('No tienes una tienda asignada como jefe. Contacta con un administrador.');
+        return;
+      }
+      select.value = String(mine.id_tienda);
+      select.disabled = true;
       if (tiendas.length) cargarDatosSemana();
     }
 
@@ -60,45 +96,72 @@
     async function cargarDatosSemana() {
       const tiendaId = document.getElementById('selectTienda').value;
       const semanaISO = fISO(semanaInicio);
+      console.log('[asignar] cargarDatosSemana tiendaId, semanaISO:', tiendaId, semanaISO);
 
       const [turnosRes, asignacionesRes, trabajadoresRes, reqRes] = await Promise.all([
-        fetch(`${API}/turnos/tienda/${tiendaId}`).then(r => r.json()),
-        fetch(`${API}/turnos/asignaciones?id_tienda=${tiendaId}&semana_inicio=${semanaISO}`).then(r => r.json()).then(d => { fechasSemana = d.fechas; return d.asignaciones; }),
-        fetch(`${API}/turnos/trabajadores/${tiendaId}`).then(r => r.json()),
-        fetch(`${API}/turnos/requerimientos?id_tienda=${tiendaId}&semana_inicio=${semanaISO}`).then(r => r.json()),
+        fetch(`${API}/turnos/tienda/${tiendaId}`, { headers: authHeaders() }).then(r => r.json()),
+        fetch(`${API}/turnos/asignaciones?id_tienda=${tiendaId}&semana_inicio=${semanaISO}`, { headers: authHeaders() }).then(r => r.json()).then(d => { fechasSemana = d.fechas; return d.asignaciones; }),
+        fetch(`${API}/turnos/trabajadores/${tiendaId}`, { headers: authHeaders() }).then(r => r.json()),
+        fetch(`${API}/turnos/requerimientos?id_tienda=${tiendaId}&semana_inicio=${semanaISO}`, { headers: authHeaders() }).then(r => r.json()),
       ]);
 
       turnos = turnosRes;
-      asignaciones = asignacionesRes;
+      // Normaliza asignaciones (tipos y formato de fecha)
+      asignaciones = (asignacionesRes || []).map(a => ({
+        ...a,
+        id_turno: Number(a.id_turno),
+        id_trabajador: Number(a.id_trabajador),
+        fecha: (typeof a.fecha === 'string') ? a.fecha.slice(0,10) : new Date(a.fecha).toISOString().slice(0,10)
+      }));
       trabajadores = trabajadoresRes;
-      requerimientos = reqRes.requerimientos || [];
+      // Normaliza requerimientos para evitar desajustes de tipos
+      requerimientos = (reqRes.requerimientos || []).map(r => ({
+        id_turno: Number(r.id_turno),
+        fecha: (typeof r.fecha === 'string') ? r.fecha.slice(0,10) : new Date(r.fecha).toISOString().slice(0,10),
+        cantidad: Number(r.cantidad)
+      }));
+      console.log('[asignar] datos semana:', { turnos, asignaciones, trabajadores, requerimientos, fechasSemana });
 
       renderizarTabla();
     }
 
     function renderizarTabla() {
+      console.log('[asignar] renderizarTabla: turnos=', turnos?.length, 'fechas=', fechasSemana?.length);
       // Cabecera días
       const header = document.getElementById('headerDias');
       header.innerHTML = '<th>Turno / Día</th>';
       fechasSemana.forEach(fecha => {
-        const d = new Date(fecha);
+        const [yy, mm, dd] = String(fecha).split('-').map(Number);
+        const d = new Date(yy, (mm || 1) - 1, dd || 1);
         header.innerHTML += `<th>${d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' })}</th>`;
       });
 
+      // Corrige encabezados usando fecha local para evitar desfases
+      {
+        let headerRow = '<th>Turno / Día</th>';
+        fechasSemana.forEach(fecha => {
+          const [yy, mm, dd] = String(fecha).split('-').map(Number);
+          const d = new Date(yy, (mm || 1) - 1, dd || 1);
+          headerRow += `<th>${d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' })}</th>`;
+        });
+        header.innerHTML = headerRow;
+      }
       // Cuerpo turnos
       const tbody = document.getElementById('bodyTurnos');
       tbody.innerHTML = '';
 
       turnos.forEach(turno => {
         const turnoId = Number(turno.id_turno ?? turno.id);
+        console.log('[asignar] render turnoId=', turnoId, 'rango=', turno.hora_inicio, turno.hora_fin);
         let fila = `<tr><td>${turno.nombre || 'Turno ' + turnoId}<br>${turno.hora_inicio} - ${turno.hora_fin}</td>`;
 
         fechasSemana.forEach(fecha => {
-          const asignsDia = asignaciones.filter(a => Number(a.id_turno) === turnoId && a.fecha === fecha);
+          const asignsDia = asignaciones.filter(a => a.id_turno === turnoId && a.fecha === fecha);
           const req = requerimientos.find(r => r.id_turno === turnoId && r.fecha === fecha);
-          const cantidadReq = req ? Number(req.cantidad) : 0;
+          const cantidadReq = req ? req.cantidad : 0;
           const asignadosCount = asignsDia.length;
           const disableSelect = (!cantidadReq || asignadosCount >= cantidadReq);
+          console.log('[asignar] celda', { turnoId, fecha, cantidadReq, asignadosCount, disableSelect });
 
           const trabajadoresAsignadosHTML = asignsDia.map(a => {
             const trabajador = trabajadores.find(t => t.id_trabajador === a.id_trabajador);
@@ -107,7 +170,7 @@
 
           fila += `<td data-fecha="${fecha}" data-turno="${turnoId}">
             <div class="cell-head">
-              <label>Necesarios: <input type="number" min="0" class="inputCantidad" value="${cantidadReq}" style="width:60px;"></label>
+              <label>Necesarios: <input type="number" min="1" class="inputCantidad" value="${Math.max(cantidadReq,1)}" style="width:60px;"></label>
               <button class="btnGuardarCantidad">Guardar</button>
               <small class="muted">Asignados: ${asignadosCount}/${cantidadReq || 0}</small>
             </div>
@@ -130,13 +193,15 @@
         div.onclick = async () => {
           if (confirm('¿Quitar esta asignación?')) {
             const id_asignacion = div.getAttribute('data-id');
+            console.log('[asignar] desasignar click id_asignacion=', id_asignacion);
             try {
               const res = await fetch(`${API}/turnos/desasignar`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: authHeaders(),
                 body: JSON.stringify({ id_asignacion })
               });
               const json = await res.json().catch(() => ({}));
+              console.log('[asignar] desasignar respuesta', res.status, json);
               if (!res.ok) alert('Error al desasignar: ' + (json.error || res.statusText));
               cargarDatosSemana();
             } catch (e) { alert('Error de red al desasignar'); }
@@ -150,6 +215,7 @@
           const td = inp.closest('td');
           const sel = td && td.querySelector('.selectTrabajador');
           if (sel) { sel.disabled = true; sel.title = 'Guarda la cantidad para habilitar las asignaciones'; }
+          console.log('[asignar] cambio cantidad (requiere guardar):', inp.value, 'td turno=', td?.getAttribute('data-turno'), 'fecha=', td?.getAttribute('data-fecha'));
         });
       });
 
@@ -160,11 +226,13 @@
           const id_turno = parseInt(td.getAttribute('data-turno'), 10);
           const fecha = td.getAttribute('data-fecha');
           const cantidad = parseInt(td.querySelector('.inputCantidad').value, 10);
-          if (isNaN(cantidad) || cantidad < 0) { alert('Cantidad inválida'); return; }
+          console.log('[asignar] guardar cantidad payload:', { id_turno, fecha, cantidad });
+          if (isNaN(cantidad) || cantidad < 1) { alert('La cantidad debe ser al menos 1'); return; }
           const res = await fetch(`${API}/turnos/requerimientos`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id_turno, fecha, cantidad })
+            method: 'POST', headers: authHeaders(), body: JSON.stringify({ id_turno, fecha, cantidad })
           });
           const json = await res.json();
+          console.log('[asignar] guardar cantidad respuesta:', res.status, json);
           if (json.error) { alert('Error: ' + json.error); } else { cargarDatosSemana(); }
         };
       });
@@ -176,12 +244,25 @@
           const td = select.closest('td');
           const fecha = td.getAttribute('data-fecha');
           const id_turno = parseInt(td.getAttribute('data-turno'), 10);
-          const asignado_por = 1; // TODO: usuario autenticado
+          // Opcional: id del usuario autenticado que asigna
+          let asignado_por = null;
           try {
+            const raw = localStorage.getItem('token');
+            if (raw && raw.includes('.')) {
+              const body = atob(raw.split('.')[0].replace(/-/g,'+').replace(/_/g,'/'));
+              const payload = JSON.parse(body);
+              if (payload && payload.uid) asignado_por = payload.uid;
+            }
+          } catch (_) {}
+          console.log('[asignar] asignar trabajador payload:', { id_trabajador, id_turno, fecha, asignado_por });
+          try {
+            const payload = { id_trabajador, id_turno, fecha };
+            if (asignado_por) payload.asignado_por = asignado_por;
             const res = await fetch(`${API}/turnos/asignar`, {
-              method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id_trabajador, id_turno, fecha, asignado_por })
+              method: 'POST', headers: authHeaders(), body: JSON.stringify(payload)
             });
             const json = await res.json().catch(() => ({}));
+            console.log('[asignar] asignar respuesta:', res.status, json);
             if (!res.ok) { alert('Error al asignar: ' + (json.error || res.statusText)); select.value = ''; return; }
             cargarDatosSemana();
           } catch (e) { alert('Error de red al asignar'); }
@@ -197,4 +278,3 @@
   </script>
 </body>
 </html>
-

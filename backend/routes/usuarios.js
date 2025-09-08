@@ -1,8 +1,24 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/connection');
+const { authenticate } = require('../middleware/auth');
 
-router.post('/', async (req, res) => {
+// Middleware puntual para proteger creación de usuarios y cambio de rol
+router.use((req, res, next) => {
+  const path = req.path || '';
+  const method = req.method || 'GET';
+  const needsAuth = (method === 'POST' && path === '/') || (method === 'PUT' && /\/\d+\/rol$/.test(path));
+  if (!needsAuth) return next();
+  authenticate(req, res, () => {
+    const role = (req.user?.rol || '').toLowerCase();
+    if (role !== 'admin' && role !== 'administrador') {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+    next();
+  });
+});
+
+router.post('/', authenticate, async (req, res) => {
   const { nombre, email, contraseña, rol, id_tienda } = req.body;
 
   try {
@@ -52,7 +68,7 @@ router.get('/vista', async (req, res) => {
 });
 
 // Actualizar rol de un usuario
-router.put('/:id/rol', async (req, res) => {
+router.put('/:id/rol', authenticate, async (req, res) => {
   const { id } = req.params;
   const { rol } = req.body || {};
   if (!rol) return res.status(400).json({ error: 'Rol requerido' });

@@ -43,6 +43,20 @@
       return headers;
     }
 
+    function requireAdmin() {
+      try {
+        const token = localStorage.getItem('token') || '';
+        if (!token || !token.includes('.')) throw new Error('Sin token');
+        const b = token.split('.')[0].replace(/-/g,'+').replace(/_/g,'/');
+        const payload = JSON.parse(atob(b));
+        const rol = String(payload.rol || '').toLowerCase();
+        if (rol !== 'admin' && rol !== 'administrador') throw new Error('No admin');
+      } catch (_) {
+        alert('Acceso restringido: solo administradores');
+        window.location.href = 'login.html';
+      }
+    }
+
     async function safeFetch(url, options = {}) {
       const res = await fetch(url, options);
       const isJSON = res.headers.get('content-type')?.includes('application/json');
@@ -111,6 +125,7 @@
     const statusEl = el('status');
 
     async function cargarDatos() {
+      requireAdmin();
       try {
         const [tiendasRes, usuariosRes] = await Promise.all([
           safeFetch(ENDPOINTS.tiendas, { headers: authHeaders() }),
@@ -229,4 +244,3 @@
   </script>
 </body>
 </html>
-

@@ -14,12 +14,33 @@
   </form>
 
   <script>
-    document.getElementById("formTienda").addEventListener("submit", async e => {
+    function requireAdmin() {
+      try {
+        const token = localStorage.getItem('token') || '';
+        if (!token || !token.includes('.')) throw new Error('Sin token');
+        const b = token.split('.')[0].replace(/-/g,'+').replace(/_/g,'/');
+        const payload = JSON.parse(atob(b));
+        const rol = String(payload.rol || '').toLowerCase();
+        if (rol !== 'admin' && rol !== 'administrador') throw new Error('No admin');
+      } catch (_) {
+        alert('Acceso restringido: solo administradores');
+        window.location.href = 'login.html';
+      }
+    }
+    function authHeaders() {
+      const h = { 'Content-Type': 'application/json' };
+      const t = localStorage.getItem('token');
+      if (t) h['Authorization'] = `Bearer ${t}`;
+      return h;
+    }
+
+    requireAdmin();
+    document.getElementById('formTienda').addEventListener('submit', async e => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(e.target));
-      const res = await fetch("http://localhost:3000/api/tiendas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('http://localhost:3000/api/tiendas', {
+        method: 'POST',
+        headers: authHeaders(),
         body: JSON.stringify(data)
       });
       const json = await res.json();

@@ -1,8 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/connection');
+const { authenticate } = require('../middleware/auth');
 
-router.post('/', async (req, res) => {
+function ensureAdmin(req) {
+  const rol = req.user?.rol?.toLowerCase();
+  return rol === 'admin' || rol === 'administrador';
+}
+
+router.post('/', authenticate, async (req, res) => {
+  if (!ensureAdmin(req)) return res.status(403).json({ error: 'No autorizado' });
   const { nombre, direccion, id_jefe } = req.body;
   try {
     await db('Tiendas').insert({ nombre, direccion, id_jefe: id_jefe || null });
@@ -34,7 +41,8 @@ router.get('/vista', async (req, res) => {
 });
 
 // Actualizar tienda (nombre, direccion, id_jefe) y, si aplica, rol del nuevo jefe
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
+  if (!ensureAdmin(req)) return res.status(403).json({ error: 'No autorizado' });
   const { id } = req.params;
   const { nombre, direccion, id_jefe } = req.body || {};
 
