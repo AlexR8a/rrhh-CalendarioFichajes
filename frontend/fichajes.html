@@ -1,0 +1,226 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fichajes - RRHH</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <a class="brand" href="index.html" aria-label="Inicio">
+        <div class="logo" aria-hidden="true"></div>
+        <div>RRHH App</div>
+      </a>
+      <nav class="navlinks" aria-label="NavegaciÃ³n principal">
+        <a href="ver-usuarios.html">Usuarios</a>
+        <a href="ver-tiendas.html">Tiendas</a>
+        <a href="asignar-turnos.html">Turnos</a>
+        <a href="fichajes.html">Fichajes</a>
+        <a href="crear-turno.html">Crear turno</a>
+      </nav>
+      <button class="btn btn-outline" id="btnTheme" title="Cambiar tema"></button>
+      <div class="user" id="userBox">
+        <span id="userLabel">No autenticado</span>
+        <a class="btn btn-outline" href="login.html" id="btnLogin">Entrar</a>
+        <button class="btn" id="btnLogout" style="display:none">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1 class="title">Fichajes semanales</h1>
+      <p class="subtitle">Vista similar a la hoja semanal del Excel, con ediciÃ³n sencilla y totales.</p>
+    </section>
+
+    <div class="card" style="margin-bottom:16px;">
+      <label for="selectTienda">Tienda</label>
+      <div class="row" style="grid-template-columns: 1fr auto auto auto; gap: 10px; align-items: end;">
+        <select id="selectTienda"></select>
+        <button id="btnSemanaAnt" class="btn btn-secondary">Semana anterior</button>
+        <button id="btnSemanaSig" class="btn">Semana siguiente</button>
+        <a id="btnExport" class="btn btn-outline" href="#" download>Exportar CSV</a>
+      </div>
+    </div>
+
+    <div class="card table-wrap">
+      <table id="tablaFichajes">
+        <thead id="thead"></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container foot">
+      <div>Â© <span id="y"></span> RRHH App Â· GestiÃ³n interna</div>
+      <div>
+        <a href="login.html">Iniciar sesiÃ³n</a>
+        Â·
+        <a href="#" id="goTop">Ir arriba</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    const API = 'http://localhost:3000/api';
+    let semanaInicio = new Date();
+    semanaInicio.setHours(0,0,0,0);
+    const dow = semanaInicio.getDay();
+    semanaInicio.setDate(semanaInicio.getDate() - ((dow + 6) % 7));
+    let fechasSemana = [];
+    let trabajadores = [];
+    let fichajes = [];
+
+    function authHeaders(){
+      const h = { 'Content-Type': 'application/json' };
+      const t = localStorage.getItem('token');
+      if (t) h['Authorization'] = `Bearer ${t}`;
+      return h;
+    }
+    function fISO(date) { return date.toISOString().slice(0,10); }
+
+    function decodePayload() {
+      try {
+        const raw = localStorage.getItem('token');
+        if (!raw || !raw.includes('.')) return null;
+        const body = atob(raw.split('.')[0].replace(/-/g,'+').replace(/_/g,'/'));
+        return JSON.parse(body);
+      } catch { return null; }
+    }
+
+    async function cargarTiendas() {
+      const res = await fetch(`${API}/tiendas`);
+      const tiendas = await res.json();
+      const me = decodePayload();
+      const sel = document.getElementById('selectTienda');
+      sel.innerHTML = '';
+      tiendas.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id_tienda; opt.textContent = t.nombre; sel.appendChild(opt);
+      });
+      if (me && me.rol === 'jefe') {
+        const mine = tiendas.find(t => Number(t.id_jefe) === Number(me.uid));
+        if (mine) { sel.value = String(mine.id_tienda); sel.disabled = true; }
+        else { alert('No tienes tienda asignada. Contacta con administraciÃ³n.'); }
+      }
+      cargarSemana();
+    }
+
+    async function cargarSemana(){
+      const tienda = document.getElementById('selectTienda').value;
+      const desde = fISO(semanaInicio);
+      fechasSemana = [];
+      for (let i = 0; i < 7; i++) { const d = new Date(semanaInicio); d.setDate(semanaInicio.getDate()+i); fechasSemana.push(fISO(d)); }
+      const url = `${API}/fichajes/semana?tienda=${encodeURIComponent(tienda)}&desde=${desde}`;
+      const res = await fetch(url, { headers: authHeaders() });
+      const json = await res.json();
+      trabajadores = json.trabajadores || [];
+      fichajes = json.fichajes || [];
+      renderTabla();
+      const exp = document.getElementById('btnExport');
+      exp.href = `${API}/fichajes/semana.csv?tienda=${encodeURIComponent(tienda)}&desde=${desde}`;
+    }
+
+    function toMin(hhmmss){ if (!hhmmss) return null; const [hh, mm] = String(hhmmss).split(':'); const h=Number(hh), m=Number(mm); if(Number.isNaN(h)||Number.isNaN(m)) return null; return h*60+m; }
+    function difMin(a,b){ const am=toMin(a), bm=toMin(b); if(am==null||bm==null) return 0; const d=bm-am; return d>0?d:0; }
+    function fmtMin(min){ const h=Math.floor(min/60), m=min%60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; }
+
+    function renderTabla(){
+      // thead
+      const thead = document.getElementById('thead');
+      let h = '<tr><th>Empleado</th>';
+      fechasSemana.forEach(f => {
+        const [yy, mm, dd] = f.split('-').map(Number);
+        const d = new Date(yy, (mm||1)-1, dd||1);
+        h += `<th>${d.toLocaleDateString('es-ES', { weekday:'short', day:'numeric' })}</th>`;
+      });
+      h += '<th>Total semana</th></tr>';
+      thead.innerHTML = h;
+
+      // tbody
+      const tbody = document.getElementById('tbody');
+      tbody.innerHTML = '';
+      trabajadores.forEach(t => {
+        let total = 0;
+        let row = `<tr><td>${t.nombre}</td>`;
+        fechasSemana.forEach(fecha => {
+          const f = fichajes.find(x => x.id_trabajador === t.id_trabajador && x.fecha === fecha);
+          const entrada = f?.hora_entrada || '';
+          const salida = f?.hora_salida || '';
+          total += difMin(entrada, salida);
+          row += `<td data-trab="${t.id_trabajador}" data-fecha="${fecha}">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span class="muted">${entrada && salida ? fmtMin(difMin(entrada, salida)) : ''}</span>
+              <span>${entrada ? entrada.slice(0,5) : '--:--'} - ${salida ? salida.slice(0,5) : '--:--'}</span>
+              <button class="btn btn-secondary btnEdit" style="padding:4px 8px; font-size:12px;">Editar</button>
+            </div>
+          </td>`;
+        });
+        row += `<td>${fmtMin(total)}</td></tr>`;
+        tbody.innerHTML += row;
+      });
+
+      bindEditors();
+    }
+
+    function bindEditors(){
+      document.querySelectorAll('.btnEdit').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const td = btn.closest('td');
+          if (!td) return;
+          const current = td.querySelector('span:nth-child(2)')?.textContent || '';
+          const [a,b] = current.split('-').map(s => s.trim());
+          td.innerHTML = `<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <label>Entrada <input type="time" class="inpE" value="${a && a !== '--:--' ? a : ''}"></label>
+            <label>Salida <input type="time" class="inpS" value="${b && b !== '--:--' ? b : ''}"></label>
+            <button class="btn btn-secondary btnCancel" style="padding:4px 8px; font-size:12px;">Cancelar</button>
+            <button class="btn btn-danger btnClear" style="padding:4px 8px; font-size:12px;">Borrar</button>
+            <button class="btn btnEditSave" style="padding:4px 8px; font-size:12px;">Guardar</button>
+          </div>`;
+          attachEditHandlers(td);
+        });
+      });
+    }
+
+    function attachEditHandlers(td){
+      const trabajador = parseInt(td.getAttribute('data-trab'), 10);
+      const fecha = td.getAttribute('data-fecha');
+      td.querySelector('.btnCancel').onclick = () => cargarSemana();
+      td.querySelector('.btnClear').onclick = async () => { await guardarFichaje(trabajador, fecha, '', ''); };
+      td.querySelector('.btnEditSave').onclick = async () => {
+        const e = td.querySelector('.inpE')?.value || '';
+        const s = td.querySelector('.inpS')?.value || '';
+        // Validaciones bÃ¡sicas
+        if (e && s) {
+          if (s <= e) { alert('La salida debe ser posterior a la entrada.'); return; }
+        }
+        await guardarFichaje(trabajador, fecha, e, s);
+      };
+    }
+
+    async function guardarFichaje(id_trabajador, fecha, hora_entrada, hora_salida){
+      try {
+        const res = await fetch(`${API}/fichajes/manual`, {
+          method: 'PUT',
+          headers: authHeaders(),
+          body: JSON.stringify({ id_trabajador, fecha, hora_entrada: hora_entrada ? (hora_entrada+':00') : null, hora_salida: hora_salida ? (hora_salida+':00') : null })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al guardar');
+        cargarSemana();
+      } catch (err) { alert(err.message); }
+    }
+
+    document.getElementById('selectTienda').onchange = cargarSemana;
+    document.getElementById('btnSemanaAnt').onclick = () => { semanaInicio.setDate(semanaInicio.getDate() - 7); cargarSemana(); };
+    document.getElementById('btnSemanaSig').onclick = () => { semanaInicio.setDate(semanaInicio.getDate() + 7); cargarSemana(); };
+
+    cargarTiendas();
+  </script>
+</body>
+</html>
+

@@ -4,114 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RRHH App</title>
-  <style>
-    :root {
-      --bg: #0b1020;
-      --bg-soft: #10162b;
-      --card: #121a34;
-      --text: #e5e7eb;
-      --muted: #a3acc2;
-      --brand: #60a5fa;
-      --brand-2: #34d399;
-      --border: #1f2a44;
-      --danger: #ef4444;
-    }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin: 0;
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color: var(--text);
-      background: radial-gradient(1200px 600px at 10% -10%, #152047 0%, transparent 60%),
-                  radial-gradient(900px 500px at 90% -20%, #0b3a2e 0%, transparent 55%),
-                  var(--bg);
-    }
-    a { color: inherit; text-decoration: none; }
-    .container { width: min(1100px, 92%); margin: 0 auto; }
-
-    /* Header */
-    header {
-      border-bottom: 1px solid var(--border);
-      background: linear-gradient(180deg, rgba(255,255,255,0.04), transparent);
-      position: sticky; top: 0; z-index: 50;
-      backdrop-filter: saturate(140%) blur(8px);
-    }
-    .nav {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 0;
-    }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .2px; }
-    .logo {
-      width: 34px; height: 34px; border-radius: 8px;
-      background: conic-gradient(from 210deg, var(--brand), var(--brand-2));
-      box-shadow: 0 6px 18px rgba(52, 211, 153, .25);
-    }
-    .navlinks { display: flex; gap: 14px; align-items: center; }
-    .navlinks a { padding: 8px 10px; border-radius: 8px; color: var(--muted); }
-    .navlinks a:hover { background: var(--bg-soft); color: var(--text); }
-    .user { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; }
-    .role { color: var(--brand-2); font-weight: 600; }
-    .btn { background: var(--brand); color: #0b1220; padding: 8px 12px; border-radius: 8px; border: 1px solid transparent; font-weight: 700; }
-    .btn:hover { filter: brightness(1.05); }
-    .btn-outline { background: transparent; color: var(--text); border-color: var(--border); }
-
-    /* Hero */
-    .hero { padding: 48px 0 26px; }
-    .title { font-weight: 800; letter-spacing: .2px; font-size: clamp(26px, 3.4vw, 36px); margin: 0 0 8px; }
-    .subtitle { color: var(--muted); margin: 0; font-size: 15px; }
-
-    /* Quick actions */
-    .grid { display: grid; gap: 16px; grid-template-columns: repeat(12, minmax(0, 1fr)); margin-top: 22px; }
-    .col-4 { grid-column: span 4; }
-    .col-6 { grid-column: span 6; }
-    .card {
-      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 18px;
-      min-height: 110px;
-      display: flex; gap: 12px; align-items: flex-start;
-      transition: transform .15s ease, background .2s ease, border-color .2s ease;
-    }
-    .card:hover { transform: translateY(-2px); border-color: #2a3a60; }
-    .icon { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: #0f1a33; border: 1px solid var(--border); font-size: 20px; }
-    .card h3 { margin: 0 0 6px; font-size: 16px; }
-    .card p { margin: 0; color: var(--muted); font-size: 13px; }
-
-    /* Sections */
-    section { margin: 26px 0 34px; }
-    section h2 { margin: 0 0 12px; font-size: 18px; font-weight: 800; letter-spacing: .2px; }
-
-    /* Footer */
-    footer {
-      margin-top: 40px; padding: 22px 0; color: var(--muted);
-      border-top: 1px solid var(--border);
-      background: linear-gradient(0deg, rgba(255,255,255,0.03), transparent);
-      font-size: 13px;
-    }
-    .foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .foot a { color: var(--muted); }
-
-    @media (max-width: 900px) {
-      .col-6 { grid-column: span 12; }
-      .col-4 { grid-column: span 12; }
-      .navlinks { display: none; }
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header>
     <div class="container nav">
-      <div class="brand">
+      <a class="brand" href="index.html" aria-label="Inicio">
         <div class="logo" aria-hidden="true"></div>
         <div>RRHH App</div>
-      </div>
+      </a>
       <nav class="navlinks" aria-label="Navegación principal">
         <a href="ver-usuarios.html">Usuarios</a>
         <a href="ver-tiendas.html">Tiendas</a>
         <a href="asignar-turnos.html">Turnos</a>
+        <a href="fichajes.html">Fichajes</a>
         <a href="crear-turno.html">Crear turno</a>
       </nav>
+      <button class="btn btn-outline" id="btnTheme" title="Cambiar tema"></button>
       <div class="user" id="userBox">
         <span id="userLabel">No autenticado</span>
         <a class="btn btn-outline" href="login.html" id="btnLogin">Entrar</a>
@@ -123,7 +32,7 @@
   <main class="container">
     <section class="hero">
       <h1 class="title">Gestión de Personal y Turnos</h1>
-      <p class="subtitle">Administra tiendas, usuarios, turnos, asignaciones y fichajes desde una interfaz simple.</p>
+      <p class="subtitle">Administra tiendas, usuarios, turnos y fichajes desde una interfaz simple.</p>
     </section>
 
     <section>
@@ -137,7 +46,7 @@
           </div>
         </a>
         <a class="card col-4" href="ver-usuarios.html">
-          <div class="icon">🗂️</div>
+          <div class="icon">📋</div>
           <div>
             <h3>Ver usuarios</h3>
             <p>Listado general, roles y tienda asociada.</p>
@@ -152,7 +61,7 @@
         </a>
 
         <a class="card col-6" href="ver-tiendas.html">
-          <div class="icon">📍</div>
+          <div class="icon">🗂</div>
           <div>
             <h3>Ver tiendas</h3>
             <p>Detalle de tiendas, dirección y jefe asignado.</p>
@@ -167,17 +76,17 @@
         </a>
 
         <a class="card col-6" href="crear-turno.html">
-          <div class="icon">⏱️</div>
+          <div class="icon">🕒</div>
           <div>
             <h3>Crear turno</h3>
             <p>Rangos de 15 min y máximo 4 horas.</p>
           </div>
         </a>
         <a class="card col-6" href="asignar-turnos.html">
-          <div class="icon">📅</div>
+          <div class="icon">🗓</div>
           <div>
-            <h3>Asignar turnos</h3>
-            <p>Define requerimientos por día y asigna personal.</p>
+            <h3>Planificación anual</h3>
+            <p>Asigna turnos por código y aplica patrones.</p>
           </div>
         </a>
       </div>
@@ -186,7 +95,7 @@
 
   <footer>
     <div class="container foot">
-      <div>© <span id="y"></span> RRHH App — Gestión interna</div>
+      <div>© <span id="y"></span> RRHH App · Gestión interna</div>
       <div>
         <a href="login.html">Iniciar sesión</a>
         ·
@@ -195,44 +104,6 @@
     </div>
   </footer>
 
-  <script>
-    const userBox = document.getElementById('userBox');
-    const userLabel = document.getElementById('userLabel');
-    const btnLogin = document.getElementById('btnLogin');
-    const btnLogout = document.getElementById('btnLogout');
-    const yearEl = document.getElementById('y');
-    const goTop = document.getElementById('goTop');
-    yearEl.textContent = new Date().getFullYear();
-    goTop.addEventListener('click', (e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
-
-    function renderSession() {
-      const token = localStorage.getItem('token');
-      const userRaw = localStorage.getItem('user');
-      if (token && userRaw) {
-        try {
-          const u = JSON.parse(userRaw);
-          userLabel.innerHTML = `${u?.nombre || u?.email || 'Usuario'} <span class="role">${(u?.rol||'').toString()}</span>`;
-          btnLogin.style.display = 'none';
-          btnLogout.style.display = 'inline-flex';
-        } catch {
-          userLabel.textContent = 'Sesión activa';
-          btnLogin.style.display = 'none';
-          btnLogout.style.display = 'inline-flex';
-        }
-      } else {
-        userLabel.textContent = 'No autenticado';
-        btnLogin.style.display = 'inline-flex';
-        btnLogout.style.display = 'none';
-      }
-    }
-
-    btnLogout.addEventListener('click', () => {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      renderSession();
-    });
-
-    renderSession();
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>

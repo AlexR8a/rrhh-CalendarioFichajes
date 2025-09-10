@@ -1,97 +1,102 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Crear Turno - RRHH</title>
-  <style>
-    body { font-family: Arial, Helvetica, sans-serif; margin: 0; background: #fff; color: #111; }
-    header, footer { background: #f5f5f5; border-bottom: 1px solid #ddd; }
-    footer { border-top: 1px solid #ddd; border-bottom: 0; margin-top: 24px; }
-    .wrap { max-width: 900px; margin: 0 auto; padding: 12px 16px; }
-    nav a { margin-right: 10px; }
-    main h1 { margin: 16px 0; font-size: 22px; }
-    label { display: block; margin-top: 10px; }
-    input, select, button { margin-top: 5px; padding: 8px; }
-    #mensaje { margin-top: 10px; font-weight: 600; }
-  </style>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header>
-    <div class="wrap">
-      <strong>RRHH</strong>
-      <nav style="display:inline-block; margin-left:16px;">
-        <a href="index.html">Inicio</a>
+    <div class="container nav">
+      <a class="brand" href="index.html" aria-label="Inicio">
+        <div class="logo" aria-hidden="true"></div>
+        <div>RRHH App</div>
+      </a>
+      <nav class="navlinks" aria-label="NavegaciÃ³n principal">
         <a href="ver-usuarios.html">Usuarios</a>
         <a href="ver-tiendas.html">Tiendas</a>
-        <a href="asignar-turnos.html">Asignar turnos</a>
+        <a href="asignar-turnos.html">Turnos</a>
+        <a href="fichajes.html">Fichajes</a>
+        <a href="crear-turno.html">Crear turno</a>
       </nav>
-      <span style="float:right"><a href="login.html">Iniciar sesión</a></span>
+      <button class="btn btn-outline" id="btnTheme" title="Cambiar tema"></button>
+      <div class="user" id="userBox">
+        <span id="userLabel">No autenticado</span>
+        <a class="btn btn-outline" href="login.html" id="btnLogin">Entrar</a>
+        <button class="btn" id="btnLogout" style="display:none">Salir</button>
+      </div>
     </div>
   </header>
 
-  <main class="wrap">
-    <h1>Crear Turno para una Tienda</h1>
+  <main class="container">
+    <section class="hero">
+      <h1 class="title">Crear Turno para una Tienda</h1>
+      <p class="subtitle">Rangos de 30 minutos y mÃ¡ximo 4 horas.</p>
+    </section>
 
-  <form id="formTurno">
-    <label for="tienda">Tienda:</label>
-    <select id="tienda" required></select>
+    <div class="card">
+      <form id="formTurno">
+        <label for="tienda">Tienda</label>
+        <select id="tienda" required></select>
 
-    <label for="id_tipo_turno">Tipo de turno:</label>
-    <select name="id_tipo_turno" id="id_tipo_turno">
-      <option value="">-- Ninguno --</option>
-    </select>
+        
 
-    <label>Hora de inicio:</label>
-    <div>
-      <select id="horaInicioHora" required></select>
-      :
-      <select id="horaInicioMin" required>
-        <option value="00">00</option>
-        <option value="15">15</option>
-        <option value="30">30</option>
-        <option value="45">45</option>
-      </select>
+        <label>Hora de inicio</label>
+        <div class="row" style="grid-template-columns: 120px 30px 120px; align-items:center;">
+          <select id="horaInicioHora" required></select>
+          <div class="muted" style="text-align:center;"> :</div>
+          <select id="horaInicioMin" required>
+            <option value="00">00</option>
+            <option value="30">30</option>
+          </select>
+        </div>
+
+        <label>Hora de fin</label>
+        <div class="row" style="grid-template-columns: 120px 30px 120px; align-items:center;">
+          <select id="horaFinHora" required></select>
+          <div class="muted" style="text-align:center;">:</div>
+          <select id="horaFinMin" required>
+            <option value="00">00</option>
+            <option value="30">30</option>
+          </select>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn">Crear turno</button>
+        </div>
+      </form>
+      <p id="mensaje" class="status"></p>
     </div>
-
-    <label>Hora de fin:</label>
-    <div>
-      <select id="horaFinHora" required></select>
-      :
-      <select id="horaFinMin" required>
-        <option value="00">00</option>
-        <option value="15">15</option>
-        <option value="30">30</option>
-        <option value="45">45</option>
-      </select>
-    </div>
-
-    <button type="submit">Crear turno</button>
-  </form>
-
-  <p id="mensaje"></p>
-
   </main>
 
   <footer>
-    <div class="wrap">
-      <small class="muted">© <span id="y"></span> RRHH</small>
+    <div class="container foot">
+      <div>Â© <span id="y"></span> RRHH App Â· GestiÃ³n interna</div>
+      <div>
+        <a href="login.html">Iniciar sesiÃ³n</a>
+        Â·
+        <a href="#" id="goTop">Ir arriba</a>
+      </div>
     </div>
   </footer>
 
+  <script src="app.js"></script>
   <script>
-    function requireAdmin() {
+    function decodePayload() {
       try {
         const token = localStorage.getItem('token') || '';
-        if (!token || !token.includes('.')) throw new Error('Sin token');
+        if (!token || !token.includes('.')) return null;
         const b = token.split('.')[0].replace(/-/g,'+').replace(/_/g,'/');
-        const payload = JSON.parse(atob(b));
-        const rol = String(payload.rol || '').toLowerCase();
-        if (rol !== 'admin' && rol !== 'administrador') throw new Error('No admin');
-      } catch (_) {
-        alert('Acceso restringido: solo administradores');
-        window.location.href = 'login.html';
-      }
+        return JSON.parse(atob(b));
+      } catch (_) { return null; }
+    }
+    function requireAdminOrJefe() {
+      const p = decodePayload();
+      const rol = String(p?.rol || '').toLowerCase();
+      if (rol === 'admin' || rol === 'administrador' || rol === 'jefe') return p;
+      alert('Acceso restringido: solo administradores o jefes');
+      window.location.href = 'login.html';
     }
     function authHeaders() {
       const h = { 'Content-Type': 'application/json' };
@@ -101,11 +106,8 @@
     }
 
     async function cargarDatos() {
-      requireAdmin();
-      const [tiendas, tiposTurno] = await Promise.all([
-        fetch('http://localhost:3000/api/tiendas', { headers: authHeaders() }).then(r => r.json()),
-        fetch('http://localhost:3000/api/tipos-turno', { headers: authHeaders() }).then(r => r.json())
-      ]);
+      const me = requireAdminOrJefe();
+      const tiendas = await fetch('http://localhost:3000/api/tiendas', { headers: authHeaders() }).then(r => r.json());
 
       const selTienda = document.getElementById('tienda');
       tiendas.forEach(t => {
@@ -114,14 +116,18 @@
         opt.textContent = t.nombre;
         selTienda.appendChild(opt);
       });
+      // Si es jefe, autoseleccionar y bloquear su tienda
+      if (String(me.rol).toLowerCase() === 'jefe') {
+        const mine = tiendas.find(t => Number(t.id_jefe) === Number(me.uid));
+        if (!mine) {
+          alert('No tienes tienda asignada como jefe. Contacta con un administrador.');
+        } else {
+          selTienda.value = String(mine.id_tienda);
+          selTienda.disabled = true;
+        }
+      }
 
-      const select = document.getElementById('id_tipo_turno');
-      tiposTurno.forEach(t => {
-        const opt = document.createElement('option');
-        opt.value = t.id_tipo_turno;
-        opt.textContent = t.nombre;
-        select.appendChild(opt);
-      });
+      
     }
 
     // Rellenar horas 00..23
@@ -139,7 +145,6 @@
 
     document.getElementById('formTurno').onsubmit = async (e) => {
       e.preventDefault();
-      const tipoSelect = document.getElementById('id_tipo_turno');
       const horaInicio = `${document.getElementById('horaInicioHora').value}:${document.getElementById('horaInicioMin').value}`;
       const horaFin = `${document.getElementById('horaFinHora').value}:${document.getElementById('horaFinMin').value}`;
 
@@ -149,26 +154,25 @@
       };
       const start = toMinutes(horaInicio);
       const end = toMinutes(horaFin);
-      const isQuarter = (m) => m % 15 === 0;
+      const isHalfHour = (m) => m % 30 === 0;
 
       const msgEl = document.getElementById('mensaje');
-      const error = (m) => { msgEl.textContent = 'Error: ' + m; msgEl.style.color = 'red'; };
-      const ok = (m) => { msgEl.textContent = m; msgEl.style.color = 'green'; };
+      const error = (m) => { msgEl.textContent = 'Error: ' + m; msgEl.className = 'status err'; };
+      const ok = (m) => { msgEl.textContent = m; msgEl.className = 'status ok'; };
 
-      if (!isQuarter(start) || !isQuarter(end)) {
-        return error('Las horas deben estar en intervalos de 15 minutos.');
+      if (!isHalfHour(start) || !isHalfHour(end)) {
+        return error('Las horas deben estar en intervalos de 30 minutos.');
       }
       const duration = end - start;
       if (duration <= 0) {
         return error('La hora de fin debe ser posterior a la de inicio.');
       }
       if (duration > 240) {
-        return error('La duración máxima de un turno es de 4 horas.');
+        return error('La duraciÃ³n mÃ¡xima de un turno es de 4 horas.');
       }
 
       const datos = {
         id_tienda: parseInt(document.getElementById('tienda').value),
-        id_tipo_turno: tipoSelect.value ? parseInt(tipoSelect.value) : undefined,
         hora_inicio: horaInicio,
         hora_fin: horaFin,
       };
@@ -187,8 +191,14 @@
       }
     };
 
-    document.getElementById('y').textContent = new Date().getFullYear();
     cargarDatos();
   </script>
 </body>
 </html>
+
+
+
+
+
+
+

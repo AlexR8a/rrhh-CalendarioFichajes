@@ -3,308 +3,392 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Asignar Turnos - RRHH</title>
+  <title>Planificación Anual - RRHH</title>
+  <link rel="stylesheet" href="styles.css" />
   <style>
-    body { font-family: Arial, Helvetica, sans-serif; margin: 0; background: #fff; color: #111; }
-    header, footer { background: #f5f5f5; border-bottom: 1px solid #ddd; }
-    footer { border-top: 1px solid #ddd; border-bottom: 0; margin-top: 24px; }
-    .wrap { max-width: 1000px; margin: 0 auto; padding: 12px 16px; }
-    nav a { margin-right: 10px; }
-    main h1 { margin: 16px 0; font-size: 22px; }
-    table, th, td { border: 1px solid #000; border-collapse: collapse; padding: 5px; vertical-align: top; min-width: 160px; }
-    th { background: #eee; }
-    .asignado { background: #a4d4a4; margin: 2px 0; padding: 2px 5px; cursor: pointer; }
-    .muted { color: #666; font-size: 12px; }
-    .warn { color: #b45309; font-size: 12px; }
-    .cell-head { display: flex; align-items: center; gap: 6px; }
-    .cell-head small { margin-left: 6px; }
+    .scroll-x { overflow-x: auto; overflow-y: hidden; }
+    .cal thead th { position: sticky; top: 64px; z-index: 2; }
+    .sticky-left { position: sticky; left: 0; z-index: 3; background: var(--bg-soft); }
+    .sticky-right { position: sticky; right: 0; z-index: 3; background: var(--bg-soft); }
+    .month { background: rgba(255,255,255,0.04); font-weight: 700; text-transform: capitalize; }
+    .week { background: rgba(255,255,255,0.03); font-size: 12px; color: var(--muted); }
+    .day { font-size: 12px; color: var(--muted); }
+    .week-sep { border-right: 2px solid var(--border) !important; }
+    .cell { width: 26px; text-align: center; padding: 6px 4px; cursor: pointer; }
+    .cell:hover { background: rgba(255,255,255,0.04); }
+    .code-badge { display: inline-block; min-width: 18px; padding: 2px 4px; border-radius: 6px; background: rgba(96,165,250,0.18); border: 1px solid rgba(96,165,250,0.35); font-weight: 700; }
+    .total { font-weight: 700; color: var(--brand-2); }
+    .editor { position: absolute; z-index: 50; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+    .editor select { min-width: 220px; }
+    .muted-small { font-size: 12px; color: var(--muted); }
+    .months { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(620px, 1fr)); }
   </style>
 </head>
 <body>
   <header>
-    <div class="wrap">
-      <strong>RRHH</strong>
-      <nav style="display:inline-block; margin-left:16px;">
-        <a href="index.html">Inicio</a>
+    <div class="container nav">
+      <a class="brand" href="index.html" aria-label="Inicio">
+        <div class="logo" aria-hidden="true"></div>
+        <div>RRHH App</div>
+      </a>
+      <nav class="navlinks" aria-label="Navegación principal">
         <a href="ver-usuarios.html">Usuarios</a>
         <a href="ver-tiendas.html">Tiendas</a>
-        <a href="asignar-turnos.html">Asignar turnos</a>
+        <a href="asignar-turnos.html">Turnos</a>
+        <a href="fichajes.html">Fichajes</a>
+        <a href="crear-turno.html">Crear turno</a>
       </nav>
-      <span style="float:right"><a href="login.html">Iniciar sesión</a></span>
+      <button class="btn btn-outline" id="btnTheme" title="Cambiar tema"></button>
+      <div class="user" id="userBox">
+        <span id="userLabel">No autenticado</span>
+        <a class="btn btn-outline" href="login.html" id="btnLogin">Entrar</a>
+        <button class="btn" id="btnLogout" style="display:none">Salir</button>
+      </div>
     </div>
   </header>
 
-  <main class="wrap">
-    <h1>Asignar Turnos - Semana</h1>
-    <label for="selectTienda">Tienda:</label>
-    <select id="selectTienda"></select>
-    <button id="btnSemanaAnt">Semana anterior</button>
-    <button id="btnSemanaSig">Semana siguiente</button>
-    <br /><br />
+  <main class="container">
+    <section class="hero">
+      <h1 class="title">Planificación anual</h1>
+      <p class="subtitle">Calendario completo: meses, semanas y días. Asigna turnos por código.</p>
+    </section>
 
-  <table id="tablaTurnos">
-    <thead>
-      <tr id="headerDias"></tr>
-    </thead>
-    <tbody id="bodyTurnos"></tbody>
-  </table>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="row" style="grid-template-columns: 1fr 200px 160px 1fr; gap: 12px; align-items: end;">
+        <div class="field">
+          <label for="selectTienda">Centro de trabajo</label>
+          <select id="selectTienda"></select>
+        </div>
+        <div class="field">
+          <label for="selectAnio">Año</label>
+          <select id="selectAnio"></select>
+        </div>
+        <div class="field" id="adminTools" style="display:none;">
+          <label>&nbsp;</label>
+          <button id="btnGestionCodigos" class="btn btn-secondary">Gestionar turnos (Admin)</button>
+        </div>
+        <div class="field" id="autoTools" style="display:none;">
+          <label>&nbsp;</label>
+          <button id="btnAutoPatron" class="btn">Aplicar patrón semanal</button>
+        </div>
+      </div>
+      <div id="codigosPanel" class="card" style="margin-top:12px; display:none;">
+        <h2>Turnos configurables (código, descripción, horas)</h2>
+        <div class="row" style="grid-template-columns: 120px 1fr 120px auto;">
+          <div class="field"><label>Código</label><input id="codigoInput" maxlength="16" placeholder="Ej. P, M, FS"/></div>
+          <div class="field"><label>Descripción</label><input id="descInput" placeholder="Texto libre"/></div>
+          <div class="field"><label>Horas</label><input id="horasInput" type="number" step="0.25" min="0" max="24"/></div>
+          <div class="field"><label>&nbsp;</label><button id="btnAgregarCodigo" class="btn">Guardar</button></div>
+        </div>
+        <div class="table-wrap" style="margin-top:12px;">
+          <table>
+            <thead><tr><th>Código</th><th>Descripción</th><th>Horas</th><th></th></tr></thead>
+            <tbody id="bodyCodigos"></tbody>
+          </table>
+        </div>
+        <p class="muted-small">Hasta 15 códigos recomendados.</p>
+      </div>
 
+      <div id="autoPanel" class="card" style="margin-top:12px; display:none;">
+        <h2>Aplicar patrón semanal</h2>
+        <p class="muted">Define un patrón de 7 días (L a D) usando códigos, por ejemplo: P,M,T,FS,FS, , . Se aplica a todos los empleados del centro.</p>
+        <div class="row" style="grid-template-columns: 240px 1fr auto; align-items: end;">
+          <div class="field"><label>Desde (lunes)</label><input id="patronDesde" type="date"/></div>
+          <div class="field"><label>Patrón (7 elementos)</label><input id="patronInput" placeholder="P,M,T,FS,FS,,"/></div>
+          <div class="field"><label>&nbsp;</label><button id="btnAplicarPatron" class="btn">Aplicar</button></div>
+        </div>
+        <div id="autoStatus" class="status"></div>
+      </div>
+    </div>
+
+    <div class="card" id="totalesCard" style="display:none; margin-bottom:16px;">
+      <h2>Totales anuales</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Empleado</th><th>Total horas</th></tr></thead>
+          <tbody id="totalesBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="monthsContainer" class="months"></div>
   </main>
 
   <footer>
-    <div class="wrap">
-      <small class="muted">© <span id="y"></span> RRHH</small>
+    <div class="container foot">
+      <div>© <span id="y"></span> RRHH App · Gestión interna</div>
+      <div>
+        <a href="login.html">Iniciar sesión</a>
+        ·
+        <a href="#" id="goTop">Ir arriba</a>
+      </div>
     </div>
   </footer>
 
+  <script src="app.js"></script>
   <script>
-    document.getElementById('y').textContent = new Date().getFullYear();
-    // Calcular lunes de la semana en horario local (evita off-by-one)
-    let semanaInicio = new Date();
-    semanaInicio.setHours(0,0,0,0);
-    const dow = semanaInicio.getDay(); // 0..6 (domingo..sábado)
-    const offset = (dow + 6) % 7;      // 0 para lunes, 1 para martes, ... 6 para domingo
-    semanaInicio.setDate(semanaInicio.getDate() - offset);
-
-    let tiendas = [];
-    let turnos = [];
-    let asignaciones = [];
-    let fechasSemana = [];
-    let trabajadores = [];
-    let requerimientos = [];
-
     const API = 'http://localhost:3000/api';
+    const PLAN = API + '/planificacion';
+    const tiendasSel = document.getElementById('selectTienda');
+    const anioSel = document.getElementById('selectAnio');
+    const monthsContainer = document.getElementById('monthsContainer');
+    const adminTools = document.getElementById('adminTools');
+    const autoTools = document.getElementById('autoTools');
+    const panelCodigos = document.getElementById('codigosPanel');
+    const bodyCodigos = document.getElementById('bodyCodigos');
+    const totalesCard = document.getElementById('totalesCard');
+    const totalesBody = document.getElementById('totalesBody');
 
-    function getToken() { return localStorage.getItem('token') || ''; }
-    function decodePayload() {
-      try {
-        const t = getToken();
-        if (!t || !t.includes('.')) return null;
-        const b = t.split('.')[0].replace(/-/g,'+').replace(/_/g,'/');
-        const json = atob(b);
-        return JSON.parse(json);
-      } catch { return null; }
-    }
-    function authHeaders() {
-      const token = getToken();
-      const h = { 'Content-Type': 'application/json' };
-      if (token) h['Authorization'] = `Bearer ${token}`;
-      return h;
-    }
+    const state = {
+      me: null,
+      tiendas: [],
+      anios: [],
+      empleados: [],
+      asignaciones: [],
+      codigos: [],
+      mapaAsig: new Map(), // key: `${id}|${fecha}` -> id_turno_codigo
+      mapaCodigoPorId: new Map(), // id -> {codigo, horas, descripcion}
+      mapaIdPorCodigo: new Map(), // codigo -> id
+      year: new Date().getFullYear(),
+    };
 
-    async function cargarTiendas() {
-      const res = await fetch(`${API}/tiendas`);
-      tiendas = await res.json();
-      console.log('[asignar] tiendas cargadas:', tiendas);
-      const select = document.getElementById('selectTienda');
-      select.innerHTML = '';
-      tiendas.forEach(t => {
-        const opt = document.createElement('option');
-        opt.value = t.id_tienda;
-        opt.textContent = t.nombre;
-        select.appendChild(opt);
-      });
-      // Si es jefe, seleccionar automáticamente su tienda y bloquear el selector
-      const me = decodePayload();
-      if (!me || me.rol !== 'jefe') {
-        alert('Acceso restringido: solo jefes de tienda');
-        window.location.href = 'login.html';
-        return;
+    function getToken(){ return localStorage.getItem('token') || ''; }
+    function authHeaders(){ const h={'Content-Type':'application/json'}; const t=getToken(); if(t) h['Authorization']=`Bearer ${t}`; return h; }
+    function decodePayload(){ try{ const t=getToken(); if(!t||!t.includes('.'))return null; return JSON.parse(atob(t.split('.')[0].replace(/-/g,'+').replace(/_/g,'/')));}catch{return null;} }
+    function fISO(d){ return d.toISOString().slice(0,10); }
+    function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
+    function isoWeek(d){ const t=new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); const day=(t.getUTCDay()+6)%7; t.setUTCDate(t.getUTCDate()-day+3); const firstThursday=new Date(Date.UTC(t.getUTCFullYear(),0,4)); const diff=(t-firstThursday)/86400000; return 1+Math.floor(diff/7); }
+
+    async function cargarBase(){
+      state.me = decodePayload();
+      if (!state.me) { alert('Inicia sesión para continuar'); window.location.href='login.html'; return; }
+
+      // Tiendas
+      state.tiendas = await fetch(`${API}/tiendas`, { headers: authHeaders() }).then(r=>r.json());
+      tiendasSel.innerHTML = '';
+      for (const t of state.tiendas){ const o=document.createElement('option'); o.value=t.id_tienda; o.textContent=t.nombre; tiendasSel.appendChild(o); }
+
+      // Años
+      state.anios = await fetch(`${PLAN}/anios`).then(r=>r.json());
+      anioSel.innerHTML = '';
+      for (const a of state.anios){ const o=document.createElement('option'); o.value=a.valor; o.textContent=a.valor; anioSel.appendChild(o); }
+      anioSel.value = String(state.year);
+
+      // Roles
+      const rol = String(state.me?.rol||'').toLowerCase();
+      if (rol === 'jefe' || rol === 'encargado') {
+        const mine = state.tiendas.find(t=> Number(t.id_jefe) === Number(state.me.uid));
+        if (!mine) { alert('No tienes un centro asignado. Contacta con un administrador.'); return; }
+        tiendasSel.value = String(mine.id_tienda);
+        tiendasSel.disabled = true; // solo Admin puede cambiar centro
+        anioSel.disabled = true; // solo Admin puede cambiar año
+        autoTools.style.display = 'block';
+      } else if (rol === 'admin' || rol === 'administrador') {
+        adminTools.style.display = 'block';
+        autoTools.style.display = 'block';
       }
-      const mine = tiendas.find(t => Number(t.id_jefe) === Number(me.uid));
-      if (!mine) {
-        alert('No tienes una tienda asignada como jefe. Contacta con un administrador.');
-        return;
-      }
-      select.value = String(mine.id_tienda);
-      select.disabled = true;
-      if (tiendas.length) cargarDatosSemana();
+
+      await cargarDatos();
     }
 
-    function fISO(date) { return date.toISOString().slice(0,10); }
-
-    async function cargarDatosSemana() {
-      const tiendaId = document.getElementById('selectTienda').value;
-      const semanaISO = fISO(semanaInicio);
-      console.log('[asignar] cargarDatosSemana tiendaId, semanaISO:', tiendaId, semanaISO);
-
-      const [turnosRes, asignacionesRes, trabajadoresRes, reqRes] = await Promise.all([
-        fetch(`${API}/turnos/tienda/${tiendaId}`, { headers: authHeaders() }).then(r => r.json()),
-        fetch(`${API}/turnos/asignaciones?id_tienda=${tiendaId}&semana_inicio=${semanaISO}`, { headers: authHeaders() }).then(r => r.json()).then(d => { fechasSemana = d.fechas; return d.asignaciones; }),
-        fetch(`${API}/turnos/trabajadores/${tiendaId}`, { headers: authHeaders() }).then(r => r.json()),
-        fetch(`${API}/turnos/requerimientos?id_tienda=${tiendaId}&semana_inicio=${semanaISO}`, { headers: authHeaders() }).then(r => r.json()),
-      ]);
-
-      turnos = turnosRes;
-      // Normaliza asignaciones (tipos y formato de fecha)
-      asignaciones = (asignacionesRes || []).map(a => ({
-        ...a,
-        id_turno: Number(a.id_turno),
-        id_trabajador: Number(a.id_trabajador),
-        fecha: (typeof a.fecha === 'string') ? a.fecha.slice(0,10) : new Date(a.fecha).toISOString().slice(0,10)
-      }));
-      trabajadores = trabajadoresRes;
-      // Normaliza requerimientos para evitar desajustes de tipos
-      requerimientos = (reqRes.requerimientos || []).map(r => ({
-        id_turno: Number(r.id_turno),
-        fecha: (typeof r.fecha === 'string') ? r.fecha.slice(0,10) : new Date(r.fecha).toISOString().slice(0,10),
-        cantidad: Number(r.cantidad)
-      }));
-      console.log('[asignar] datos semana:', { turnos, asignaciones, trabajadores, requerimientos, fechasSemana });
-
-      renderizarTabla();
+    async function cargarDatos(){
+      const tienda = tiendasSel.value; const y = parseInt(anioSel.value||state.year, 10);
+      state.year = y;
+      const json = await fetch(`${PLAN}/asignaciones?tienda=${encodeURIComponent(tienda)}&anio=${encodeURIComponent(y)}`, { headers: authHeaders() }).then(r=>r.json());
+      state.empleados = json.empleados || [];
+      state.asignaciones = json.asignaciones || [];
+      state.codigos = json.codigos || [];
+      state.mapaAsig = new Map();
+      state.mapaCodigoPorId = new Map();
+      state.mapaIdPorCodigo = new Map();
+      for (const c of state.codigos){ state.mapaCodigoPorId.set(c.id_turno_codigo, c); state.mapaIdPorCodigo.set(String(c.codigo).toUpperCase(), c.id_turno_codigo); }
+      for (const a of state.asignaciones){ state.mapaAsig.set(`${a.id_trabajador}|${a.fecha}`, a.id_turno_codigo); }
+      renderCodigosTabla();
+      renderMonths();
+      renderTotales();
     }
 
-    function renderizarTabla() {
-      console.log('[asignar] renderizarTabla: turnos=', turnos?.length, 'fechas=', fechasSemana?.length);
-      // Cabecera días
-      const header = document.getElementById('headerDias');
-      header.innerHTML = '<th>Turno / Día</th>';
-      fechasSemana.forEach(fecha => {
-        const [yy, mm, dd] = String(fecha).split('-').map(Number);
-        const d = new Date(yy, (mm || 1) - 1, dd || 1);
-        header.innerHTML += `<th>${d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' })}</th>`;
-      });
-
-      // Corrige encabezados usando fecha local para evitar desfases
-      {
-        let headerRow = '<th>Turno / Día</th>';
-        fechasSemana.forEach(fecha => {
-          const [yy, mm, dd] = String(fecha).split('-').map(Number);
-          const d = new Date(yy, (mm || 1) - 1, dd || 1);
-          headerRow += `<th>${d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' })}</th>`;
-        });
-        header.innerHTML = headerRow;
+    function renderCodigosTabla(){
+      bodyCodigos.innerHTML = '';
+      for (const c of state.codigos){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${c.codigo}</td><td>${c.descripcion||''}</td><td>${Number(c.horas).toFixed(2)}</td><td><button class="btn btn-secondary" data-del="${c.id_turno_codigo}">Desactivar</button></td>`;
+        bodyCodigos.appendChild(tr);
       }
-      // Cuerpo turnos
-      const tbody = document.getElementById('bodyTurnos');
-      tbody.innerHTML = '';
-
-      turnos.forEach(turno => {
-        const turnoId = Number(turno.id_turno ?? turno.id);
-        console.log('[asignar] render turnoId=', turnoId, 'rango=', turno.hora_inicio, turno.hora_fin);
-        let fila = `<tr><td>${turno.nombre || 'Turno ' + turnoId}<br>${turno.hora_inicio} - ${turno.hora_fin}</td>`;
-
-        fechasSemana.forEach(fecha => {
-          const asignsDia = asignaciones.filter(a => a.id_turno === turnoId && a.fecha === fecha);
-          const req = requerimientos.find(r => r.id_turno === turnoId && r.fecha === fecha);
-          const cantidadReq = req ? req.cantidad : 0;
-          const asignadosCount = asignsDia.length;
-          const disableSelect = (!cantidadReq || asignadosCount >= cantidadReq);
-          console.log('[asignar] celda', { turnoId, fecha, cantidadReq, asignadosCount, disableSelect });
-
-          const trabajadoresAsignadosHTML = asignsDia.map(a => {
-            const trabajador = trabajadores.find(t => t.id_trabajador === a.id_trabajador);
-            return `<div class="asignado" data-id="${a.id_asignacion}" title="Click para quitar">${trabajador ? trabajador.nombre : 'Desconocido'}</div>`;
-          }).join('');
-
-          fila += `<td data-fecha="${fecha}" data-turno="${turnoId}">
-            <div class="cell-head">
-              <label>Necesarios: <input type="number" min="1" class="inputCantidad" value="${Math.max(cantidadReq,1)}" style="width:60px;"></label>
-              <button class="btnGuardarCantidad">Guardar</button>
-              <small class="muted">Asignados: ${asignadosCount}/${cantidadReq || 0}</small>
-            </div>
-            ${trabajadoresAsignadosHTML}
-            <br>
-            <select class="selectTrabajador" ${disableSelect ? 'disabled title="Define y guarda la cantidad requerida primero"' : ''}>
-              <option value="">-- Añadir trabajador --</option>
-              ${trabajadores.map(t => `<option value="${t.id_trabajador}">${t.nombre}</option>`).join('')}
-            </select>
-            ${disableSelect ? '<div class="warn">Primero guarda la cantidad requerida y/o no superes el máximo.</div>' : ''}
-          </td>`;
-        });
-
-        fila += '</tr>';
-        tbody.innerHTML += fila;
+      bodyCodigos.querySelectorAll('button[data-del]').forEach(btn=>{
+        btn.onclick = async ()=>{
+          if(!confirm('¿Desactivar código?')) return;
+          const id=btn.getAttribute('data-del');
+          const res = await fetch(`${PLAN}/codigos/${id}`, { method:'DELETE', headers: authHeaders() });
+          if(!res.ok){ const j=await res.json().catch(()=>({})); alert(j.error||res.statusText); return; }
+          await cargarDatos();
+        };
       });
+    }
 
-      // Quitar asignación
-      document.querySelectorAll('.asignado').forEach(div => {
-        div.onclick = async () => {
-          if (confirm('¿Quitar esta asignación?')) {
-            const id_asignacion = div.getAttribute('data-id');
-            console.log('[asignar] desasignar click id_asignacion=', id_asignacion);
-            try {
-              const res = await fetch(`${API}/turnos/desasignar`, {
-                method: 'POST',
-                headers: authHeaders(),
-                body: JSON.stringify({ id_asignacion })
-              });
-              const json = await res.json().catch(() => ({}));
-              console.log('[asignar] desasignar respuesta', res.status, json);
-              if (!res.ok) alert('Error al desasignar: ' + (json.error || res.statusText));
-              cargarDatosSemana();
-            } catch (e) { alert('Error de red al desasignar'); }
+    function buildYearDays(y){
+      const months=[];
+      for (let m=0;m<12;m++){
+        const dim = daysInMonth(y,m);
+        const days=[];
+        for (let d=1; d<=dim; d++){
+          const date = new Date(y, m, d);
+          const iso = fISO(date);
+          const wd = date.getDay(); // 0=Dom,..6=Sab
+          const w = isoWeek(date);
+          days.push({ iso, d, m, w, wd });
+        }
+        months.push({ month:m, days });
+      }
+      return months;
+    }
+
+    function renderMonths(){
+      monthsContainer.innerHTML = '';
+      const y = state.year; 
+      const months = buildYearDays(y);
+      for (const M of months){
+        const wrap = document.createElement('div');
+        wrap.className = 'card';
+        const title = document.createElement('h3');
+        title.textContent = new Date(y, M.month, 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+        title.style.textTransform = 'capitalize';
+        wrap.appendChild(title);
+        const tableWrap = document.createElement('div'); tableWrap.className='table-wrap scroll-x';
+        const table = document.createElement('table'); table.className='cal';
+        const thead = document.createElement('thead'); const tbody = document.createElement('tbody');
+        // Header: semana agrupando
+        let h2 = `<tr><th class="sticky-left week">&nbsp;</th>`;
+        let lastW = null, span = 0;
+        for (let i=0;i<M.days.length;i++){
+          const w = M.days[i].w; if (lastW===null){ lastW=w; span=1; }
+          else if (w===lastW){ span++; } else { h2 += `<th class="week" colspan="${span}">S${String(lastW).padStart(2,'0')}</th>`; lastW=w; span=1; }
+        }
+        if (span>0) h2 += `<th class="week" colspan="${span}">S${String(lastW).padStart(2,'0')}</th>`;
+        h2 += `<th class="sticky-right week">Total</th></tr>`;
+        // Header: días
+        let h3 = `<tr><th class="sticky-left day">Empleado</th>`;
+        for (const info of M.days){ const cls = info.wd===0 ? 'week-sep' : ''; h3 += `<th class="day ${cls}">${info.d}</th>`; }
+        h3 += `<th class="sticky-right day">&nbsp;</th></tr>`;
+        thead.innerHTML = h2 + h3;
+
+        const codeById = state.mapaCodigoPorId;
+        for (const emp of state.empleados){
+          let tr = document.createElement('tr');
+          const nameCell = document.createElement('td'); nameCell.className='sticky-left'; nameCell.textContent = emp.nombre; tr.appendChild(nameCell);
+          let totalMes = 0;
+          for (const info of M.days){
+            const key = `${emp.id_trabajador}|${info.iso}`; const idc = state.mapaAsig.get(key);
+            const code = idc ? codeById.get(idc) : null;
+            if (code) totalMes += Number(code.horas || 0);
+            const td = document.createElement('td'); td.className = 'cell' + (info.wd===0 ? ' week-sep' : '');
+            td.setAttribute('data-id', emp.id_trabajador); td.setAttribute('data-fecha', info.iso);
+            td.title = code ? `${code.codigo} • ${code.descripcion || ''} • ${Number(code.horas).toFixed(2)} h` : '-';
+            td.innerHTML = code ? `<span class="code-badge">${code.codigo}</span>` : '<span class="muted">·</span>';
+            td.addEventListener('click', onCellClick);
+            tr.appendChild(td);
           }
-        };
-      });
-
-      // Deshabilitar select tras cambios en cantidad hasta guardar
-      document.querySelectorAll('.inputCantidad').forEach(inp => {
-        inp.addEventListener('input', () => {
-          const td = inp.closest('td');
-          const sel = td && td.querySelector('.selectTrabajador');
-          if (sel) { sel.disabled = true; sel.title = 'Guarda la cantidad para habilitar las asignaciones'; }
-          console.log('[asignar] cambio cantidad (requiere guardar):', inp.value, 'td turno=', td?.getAttribute('data-turno'), 'fecha=', td?.getAttribute('data-fecha'));
-        });
-      });
-
-      // Guardar cantidad requerida
-      document.querySelectorAll('.btnGuardarCantidad').forEach(btn => {
-        btn.onclick = async () => {
-          const td = btn.closest('td');
-          const id_turno = parseInt(td.getAttribute('data-turno'), 10);
-          const fecha = td.getAttribute('data-fecha');
-          const cantidad = parseInt(td.querySelector('.inputCantidad').value, 10);
-          console.log('[asignar] guardar cantidad payload:', { id_turno, fecha, cantidad });
-          if (isNaN(cantidad) || cantidad < 1) { alert('La cantidad debe ser al menos 1'); return; }
-          const res = await fetch(`${API}/turnos/requerimientos`, {
-            method: 'POST', headers: authHeaders(), body: JSON.stringify({ id_turno, fecha, cantidad })
-          });
-          const json = await res.json();
-          console.log('[asignar] guardar cantidad respuesta:', res.status, json);
-          if (json.error) { alert('Error: ' + json.error); } else { cargarDatosSemana(); }
-        };
-      });
-
-      // Asignar trabajador (requiere cantidad guardada y cupo disponible)
-      document.querySelectorAll('.selectTrabajador').forEach(select => {
-        select.onchange = async () => {
-          const id_trabajador = select.value; if (!id_trabajador) return;
-          const td = select.closest('td');
-          const fecha = td.getAttribute('data-fecha');
-          const id_turno = parseInt(td.getAttribute('data-turno'), 10);
-          // Opcional: id del usuario autenticado que asigna
-          let asignado_por = null;
-          try {
-            const raw = localStorage.getItem('token');
-            if (raw && raw.includes('.')) {
-              const body = atob(raw.split('.')[0].replace(/-/g,'+').replace(/_/g,'/'));
-              const payload = JSON.parse(body);
-              if (payload && payload.uid) asignado_por = payload.uid;
-            }
-          } catch (_) {}
-          console.log('[asignar] asignar trabajador payload:', { id_trabajador, id_turno, fecha, asignado_por });
-          try {
-            const payload = { id_trabajador, id_turno, fecha };
-            if (asignado_por) payload.asignado_por = asignado_por;
-            const res = await fetch(`${API}/turnos/asignar`, {
-              method: 'POST', headers: authHeaders(), body: JSON.stringify(payload)
-            });
-            const json = await res.json().catch(() => ({}));
-            console.log('[asignar] asignar respuesta:', res.status, json);
-            if (!res.ok) { alert('Error al asignar: ' + (json.error || res.statusText)); select.value = ''; return; }
-            cargarDatosSemana();
-          } catch (e) { alert('Error de red al asignar'); }
-        };
-      });
+          const totalCell = document.createElement('td'); totalCell.className='sticky-right total'; totalCell.textContent = Number(totalMes).toFixed(2); tr.appendChild(totalCell);
+          tbody.appendChild(tr);
+        }
+        table.appendChild(thead); table.appendChild(tbody); tableWrap.appendChild(table); wrap.appendChild(tableWrap); monthsContainer.appendChild(wrap);
+      }
     }
 
-    document.getElementById('selectTienda').onchange = cargarDatosSemana;
-    document.getElementById('btnSemanaAnt').onclick = () => { semanaInicio.setDate(semanaInicio.getDate() - 7); cargarDatosSemana(); };
-    document.getElementById('btnSemanaSig').onclick = () => { semanaInicio.setDate(semanaInicio.getDate() + 7); cargarDatosSemana(); };
+    function renderTotales(){
+      // Calcula totales anuales por empleado y pinta tabla resumen
+      const y = state.year;
+      const codeById = state.mapaCodigoPorId;
+      const totals = new Map();
+      for (const emp of state.empleados) totals.set(emp.id_trabajador, 0);
+      for (const a of state.asignaciones){
+        const dt = new Date(a.fecha + 'T00:00:00');
+        if (dt.getFullYear() !== y) continue;
+        const c = codeById.get(a.id_turno_codigo);
+        if (!c) continue;
+        totals.set(a.id_trabajador, Number(totals.get(a.id_trabajador) || 0) + Number(c.horas || 0));
+      }
+      let any = false; totalesBody.innerHTML = '';
+      for (const emp of state.empleados){
+        any = true;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${emp.nombre}</td><td>${Number(totals.get(emp.id_trabajador)||0).toFixed(2)}</td>`;
+        totalesBody.appendChild(tr);
+      }
+      totalesCard.style.display = any ? 'block' : 'none';
+    }
 
-    cargarTiendas();
+    let openEditor = null;
+    function onCellClick(e){
+      const rol = String(state.me?.rol||'').toLowerCase();
+      if (rol !== 'admin' && rol !== 'administrador' && rol !== 'jefe' && rol !== 'encargado') return; // solo admin/encargado editan
+      const td = e.currentTarget;
+      const id_trabajador = parseInt(td.getAttribute('data-id'),10);
+      const fecha = td.getAttribute('data-fecha');
+      if (openEditor) openEditor.remove();
+      const editor = document.createElement('div'); editor.className='editor';
+      const sel = document.createElement('select');
+      sel.innerHTML = `<option value="">· Sin turno ·</option>` + state.codigos.map(c=>`<option value="${c.id_turno_codigo}">${c.codigo} (${Number(c.horas).toFixed(2)}h) • ${c.descripcion||''}</option>`).join('');
+      editor.appendChild(sel);
+      const rect = td.getBoundingClientRect(); editor.style.left = (rect.left + window.scrollX) + 'px'; editor.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+      document.body.appendChild(editor); openEditor = editor;
+      const close = ()=>{ if (openEditor===editor){ editor.remove(); openEditor=null; } };
+      const save = async (id_turno_codigo)=>{
+        const payload = { id_trabajador, fecha };
+        if (id_turno_codigo) payload.id_turno_codigo = parseInt(id_turno_codigo,10);
+        const res = await fetch(`${PLAN}/asignacion`, { method:'PUT', headers: authHeaders(), body: JSON.stringify(payload) });
+        const ok = res.ok; const j = await res.json().catch(()=>({})); if (!ok){ alert(j.error||res.statusText); return; }
+        const key = `${id_trabajador}|${fecha}`;
+        if (payload.id_turno_codigo) state.mapaAsig.set(key, payload.id_turno_codigo); else state.mapaAsig.delete(key);
+        const code = payload.id_turno_codigo ? state.mapaCodigoPorId.get(payload.id_turno_codigo) : null;
+        td.title = code ? `${code.codigo} • ${code.descripcion||''} • ${Number(code.horas).toFixed(2)} h` : '-';
+        td.innerHTML = code ? `<span class=\"code-badge\">${code.codigo}</span>` : '<span class=\"muted\">·</span>';
+        // Recalcular totales del mes y anuales
+        renderMonths();
+        renderTotales();
+        close();
+      };
+      sel.addEventListener('change', ()=> save(sel.value||null));
+      setTimeout(()=> document.addEventListener('click', (ev)=>{ if (!editor.contains(ev.target) && ev.target!==td) close(); }, { once:true }), 0);
+    }
+
+    // Admin: gestionar códigos
+    document.getElementById('btnGestionCodigos').onclick = ()=>{
+      panelCodigos.style.display = panelCodigos.style.display==='none' ? 'block' : 'none';
+    };
+    document.getElementById('btnAgregarCodigo').onclick = async ()=>{
+      const codigo = document.getElementById('codigoInput').value.trim();
+      const descripcion = document.getElementById('descInput').value.trim();
+      const horas = parseFloat(document.getElementById('horasInput').value);
+      if (!codigo) return alert('Código requerido');
+      if (!Number.isFinite(horas)) return alert('Horas inválidas');
+      const res = await fetch(`${PLAN}/codigos`, { method:'POST', headers: authHeaders(), body: JSON.stringify({ codigo, descripcion, horas }) });
+      const ok = res.ok; const j = await res.json().catch(()=>({})); if (!ok){ alert(j.error||res.statusText); return; }
+      document.getElementById('codigoInput').value=''; document.getElementById('descInput').value=''; document.getElementById('horasInput').value='';
+      await cargarDatos();
+    };
+
+    // Auto panel
+    document.getElementById('btnAutoPatron').onclick = ()=>{
+      const p = document.getElementById('autoPanel');
+      p.style.display = p.style.display==='none' ? 'block' : 'none';
+    };
+    document.getElementById('btnAplicarPatron').onclick = async ()=>{
+      const tienda = tiendasSel.value; const desde = document.getElementById('patronDesde').value; const raw = document.getElementById('patronInput').value;
+      if (!desde) return alert('Selecciona fecha de inicio (lunes)');
+      const parts = raw.split(',').map(s=>s.trim());
+      if (parts.length !== 7) return alert('El patrón debe tener 7 elementos separados por coma');
+      const payload = { tienda: parseInt(tienda,10), desde, pattern: parts };
+      const res = await fetch(`${PLAN}/auto/patron-semanal`, { method:'POST', headers: authHeaders(), body: JSON.stringify(payload) });
+      const ok = res.ok; const j = await res.json().catch(()=>({}));
+      const box = document.getElementById('autoStatus'); box.className='status ' + (ok? 'ok':'err'); box.textContent = ok ? 'Patrón aplicado' : (j.error || res.statusText);
+      if (ok) await cargarDatos();
+    };
+
+    tiendasSel.addEventListener('change', cargarDatos);
+    anioSel.addEventListener('change', cargarDatos);
+    cargarBase();
   </script>
 </body>
 </html>
+

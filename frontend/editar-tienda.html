@@ -3,34 +3,91 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Editar Tienda</title>
-  <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #f7f7fb; color: #222; }
-    header { background: #f5f5f5; color: #111; padding: 12px 16px; border-bottom: 1px solid #ddd; }
-    header h1 { margin: 0; font-size: 18px; }
-    main { max-width: 900px; margin: 24px auto; padding: 0 16px; }
-    .wrap { max-width: 900px; margin: 0 auto; padding: 12px 16px; }
-    nav a { margin-right: 10px; }
-    footer { background:#f5f5f5; border-top:1px solid #ddd; padding:12px 16px; margin-top:24px; }
-    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .field { display: flex; flex-direction: column; gap: 6px; }
-    label { font-size: 12px; color: #374151; }
-    input, select { padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
-    input:focus, select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
-    .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
-    button { padding: 10px 14px; border-radius: 6px; border: 1px solid transparent; cursor: pointer; font-weight: 600; }
-    .btn-primary { background: #2563eb; color: #fff; }
-    .btn-secondary { background: #fff; color: #111827; border-color: #d1d5db; }
-    .muted { color: #6b7280; font-size: 13px; }
-    .status { margin-top: 12px; font-size: 13px; }
-    .status.ok { color: #065f46; }
-    .status.err { color: #991b1b; }
-    .divider { height: 1px; background: #e5e7eb; margin: 16px 0; }
-    @media (max-width: 720px){ .row { grid-template-columns: 1fr; } }
-  </style>
+  <title>Editar Tienda - RRHH</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <a class="brand" href="index.html" aria-label="Inicio">
+        <div class="logo" aria-hidden="true"></div>
+        <div>RRHH App</div>
+      </a>
+      <nav class="navlinks" aria-label="NavegaciÃ³n principal">
+        <a href="ver-usuarios.html">Usuarios</a>
+        <a href="ver-tiendas.html">Tiendas</a>
+        <a href="asignar-turnos.html">Turnos</a>
+        <a href="fichajes.html">Fichajes</a>
+        <a href="crear-turno.html">Crear turno</a>
+      </nav>
+      <button class="btn btn-outline" id="btnTheme" title="Cambiar tema"></button>
+      <div class="user" id="userBox">
+        <span id="userLabel">No autenticado</span>
+        <a class="btn btn-outline" href="login.html" id="btnLogin">Entrar</a>
+        <button class="btn" id="btnLogout" style="display:none">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1 class="title">Editar Tienda</h1>
+      <p class="subtitle">Actualiza los datos y asigna el jefe de tienda.</p>
+    </section>
+
+    <div class="card">
+      <div class="field">
+        <label for="tiendaSelect">Selecciona una tienda</label>
+        <select id="tiendaSelect">
+          <option value="">-- Elegir --</option>
+        </select>
+        <div class="muted" id="loadingMsg">Cargando tiendas y usuarios...</div>
+      </div>
+      <div class="divider" style="height:1px;background:var(--border);margin:16px 0;"></div>
+
+      <form id="formTienda" style="display:none">
+        <div class="row">
+          <div class="field">
+            <label for="nombre">Nombre</label>
+            <input id="nombre" type="text" required placeholder="Nombre de la tienda" />
+          </div>
+          <div class="field">
+            <label for="direccion">DirecciÃ³n</label>
+            <input id="direccion" type="text" placeholder="DirecciÃ³n" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="jefe">Jefe de tienda</label>
+            <select id="jefe">
+              <option value="">-- Sin jefe asignado --</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="button" id="btnReset" class="btn btn-secondary">Descartar</button>
+          <button type="submit" class="btn">Guardar cambios</button>
+        </div>
+        <div id="status" class="status"></div>
+      </form>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container foot">
+      <div>Â© <span id="y"></span> RRHH App Â· GestiÃ³n interna</div>
+      <div>
+        <a href="login.html">Iniciar sesiÃ³n</a>
+        Â·
+        <a href="#" id="goTop">Ir arriba</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
   <script>
-    // Usa host absoluto como en otras pÃ¡ginas
     const API_PREFIX = 'http://localhost:3000/api';
     const ENDPOINTS = {
       tiendas: `${API_PREFIX}/tiendas`,
@@ -70,56 +127,13 @@
       }
       return data;
     }
-  </script>
-</head>
-<body>
-  <header>\n  <div class="wrap">\n    <strong>RRHH</strong>\n    <nav style="display:inline-block; margin-left:16px;">\n      <a href="index.html">Inicio</a>\n      <a href="ver-usuarios.html">Usuarios</a>\n      <a href="ver-tiendas.html">Tiendas</a>\n      <a href="asignar-turnos.html">Asignar turnos</a>\n    </nav>\n    <span style="float:right"><a href="login.html">Iniciar sesión</a></span>\n  </div>\n</header>
-  <main>`n    <div class="wrap"><h1>Editar Tienda</h1></div>
-    <div class="card">
-      <div class="field">
-        <label for="tiendaSelect">Selecciona una tienda</label>
-        <select id="tiendaSelect">
-          <option value="">-- Elegir --</option>
-        </select>
-        <div class="muted">Cargando tiendas y usuarios...</div>
-      </div>
-      <div class="divider"></div>
 
-      <form id="formTienda" style="display:none">
-        <div class="row">
-          <div class="field">
-            <label for="nombre">Nombre</label>
-            <input id="nombre" type="text" required placeholder="Nombre de la tienda" />
-          </div>
-          <div class="field">
-            <label for="direccion">DirecciÃ³n</label>
-            <input id="direccion" type="text" placeholder="DirecciÃ³n" />
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="field">
-            <label for="jefe">Jefe de tienda</label>
-            <select id="jefe">
-              <option value="">-- Sin jefe asignado --</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="actions">
-          <button type="button" class="btn-secondary" id="btnReset">Descartar cambios</button>
-          <button type="submit" class="btn-primary">Guardar cambios</button>
-        </div>
-        <div class="status" id="status"></div>
-      </form>
-    </div>
-  </main>
-
-  <script>
+    // Estado
     let tiendas = [];
     let usuarios = [];
     let tiendaActual = null;
 
+    // Helpers
     const el = (id) => document.getElementById(id);
     const tiendaSelect = el('tiendaSelect');
     const form = el('formTienda');
@@ -127,6 +141,7 @@
 
     async function cargarDatos() {
       requireAdmin();
+      const loading = el('loadingMsg');
       try {
         const [tiendasRes, usuariosRes] = await Promise.all([
           safeFetch(ENDPOINTS.tiendas, { headers: authHeaders() }),
@@ -137,9 +152,9 @@
 
         renderTiendas();
         renderUsuarios();
-        document.querySelector('.muted').textContent = 'Listo';
+        if (loading) loading.textContent = 'Listo';
       } catch (err) {
-        document.querySelector('.muted').textContent = `Error cargando datos: ${err.message}`;
+        if (loading) loading.textContent = `Error cargando datos: ${err.message}`;
       }
     }
 
@@ -242,5 +257,7 @@
 
     // Inicio
     cargarDatos();
-  </script>`n  <footer><div class="wrap"><small>© <span id="y"></span> RRHH</small></div></footer>`n  <script>document.getElementById("y").textContent = new Date().getFullYear();</script>`n</body>
+  </script>
+</body>
 </html>
+

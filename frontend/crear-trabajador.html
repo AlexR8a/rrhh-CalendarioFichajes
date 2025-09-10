@@ -1,55 +1,70 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Crear Trabajador - RRHH</title>
-  <style>
-    body { font-family: Arial, Helvetica, sans-serif; margin: 0; background: #fff; color: #111; }
-    header, footer { background: #f5f5f5; border-bottom: 1px solid #ddd; }
-    footer { border-top: 1px solid #ddd; border-bottom: 0; margin-top: 24px; }
-    .wrap { max-width: 900px; margin: 0 auto; padding: 12px 16px; }
-    nav a { margin-right: 10px; }
-    main h1 { margin: 16px 0; font-size: 22px; }
-    label { display: block; margin: 8px 0 4px; }
-    input, select { padding: 8px; }
-    button { margin-top: 10px; padding: 8px 12px; }
-    small.muted { color: #666; }
-  </style>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header>
-    <div class="wrap">
-      <strong>RRHH</strong>
-      <nav style="display:inline-block; margin-left:16px;">
-        <a href="index.html">Inicio</a>
+    <div class="container nav">
+      <a class="brand" href="index.html" aria-label="Inicio">
+        <div class="logo" aria-hidden="true"></div>
+        <div>RRHH App</div>
+      </a>
+      <nav class="navlinks" aria-label="NavegaciÃ³n principal">
         <a href="ver-usuarios.html">Usuarios</a>
         <a href="ver-tiendas.html">Tiendas</a>
-        <a href="asignar-turnos.html">Asignar turnos</a>
+        <a href="asignar-turnos.html">Turnos</a>
+        <a href="fichajes.html">Fichajes</a>
+        <a href="crear-turno.html">Crear turno</a>
       </nav>
-      <span style="float:right"><a href="login.html">Iniciar sesión</a></span>
+      <button class="btn btn-outline" id="btnTheme" title="Cambiar tema"></button>
+      <div class="user" id="userBox">
+        <span id="userLabel">No autenticado</span>
+        <a class="btn btn-outline" href="login.html" id="btnLogin">Entrar</a>
+        <button class="btn" id="btnLogout" style="display:none">Salir</button>
+      </div>
     </div>
   </header>
 
-  <main class="wrap">
-    <h1>Crear nuevo trabajador</h1>
-    <form id="formTrabajador">
-      <label>Nombre</label>
-      <input type="text" name="nombre" placeholder="Nombre" required>
-      <label>Email</label>
-      <input type="email" name="email" placeholder="Email" required>
-      <label for="id_tienda">Tienda</label>
-      <select name="id_tienda" id="id_tienda" required></select>
-      <button type="submit">Crear Trabajador</button>
-    </form>
+  <main class="container">
+    <section class="hero">
+      <h1 class="title">Crear nuevo trabajador</h1>
+      <p class="subtitle">Dar de alta empleados y asignarlos a una tienda.</p>
+    </section>
+
+    <div class="card">
+      <form id="formTrabajador">
+        <label>Nombre</label>
+        <input type="text" name="nombre" placeholder="Nombre" required>
+
+        <label>Email</label>
+        <input type="email" name="email" placeholder="Email" required>
+
+        <label for="id_tienda">Tienda</label>
+        <select name="id_tienda" id="id_tienda" required></select>
+
+        <div class="actions">
+          <button type="submit" class="btn">Crear Trabajador</button>
+        </div>
+      </form>
+    </div>
   </main>
 
   <footer>
-    <div class="wrap">
-      <small class="muted">© <span id="y"></span> RRHH</small>
+    <div class="container foot">
+      <div>Â© <span id="y"></span> RRHH App Â· GestiÃ³n interna</div>
+      <div>
+        <a href="login.html">Iniciar sesiÃ³n</a>
+        Â·
+        <a href="#" id="goTop">Ir arriba</a>
+      </div>
     </div>
   </footer>
 
+  <script src="app.js"></script>
   <script>
     function requireAdmin() {
       try {
@@ -71,8 +86,6 @@
       return h;
     }
 
-    document.getElementById('y').textContent = new Date().getFullYear();
-
     requireAdmin();
     fetch("http://localhost:3000/api/tiendas", { headers: authHeaders() })
       .then(res => res.json())
@@ -81,7 +94,7 @@
         tiendas.forEach(t => {
           const option = document.createElement("option");
           option.value = t.id_tienda;
-          option.textContent = `${t.nombre} (${t.direccion || 'sin dirección'})`;
+          option.textContent = `${t.nombre} (${t.direccion || 'sin direcciÃ³n'})`;
           select.appendChild(option);
         });
       });
@@ -101,3 +114,4 @@
   </script>
 </body>
 </html>
+

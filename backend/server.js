@@ -8,6 +8,7 @@ const tiendasRoutes = require('./routes/tiendas');
 const turnosRoutes = require('./routes/turnos');
 const tiposTurnoRoutes = require('./routes/tipos-turno');
 const fichajesRoutes = require('./routes/fichajes'); 
+const planificacionRoutes = require('./routes/planificacion');
 
 const app = express();
 const PORT = 3000;
@@ -23,6 +24,7 @@ app.use('/api/tiendas', tiendasRoutes);
 app.use('/api/turnos', turnosRoutes);
 app.use('/api/tipos-turno', tiposTurnoRoutes);
 app.use('/api/fichajes', fichajesRoutes); 
+app.use('/api/planificacion', planificacionRoutes);
 
 // Inicio del servidor
 app.listen(PORT, () => {
