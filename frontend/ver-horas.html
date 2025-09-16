@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Horas Asignadas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .jsonbox { white-space: pre; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background: var(--bg-soft); border:1px solid var(--border); border-radius: 10px; padding: 12px; overflow:auto; max-height: 50vh; }
+    .controls { display:flex; gap:8px; align-items:center; justify-content:flex-end; }
+    .table-wrap { margin-top: 12px; }
+    th, td { text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <a class="brand" href="index.html" aria-label="Inicio">
+        <div class="logo" aria-hidden="true"></div>
+        <div>RRHH App</div>
+      </a>
+      <nav class="navlinks" aria-label="Navegación principal">
+        <a href="ver-usuarios.html">Usuarios</a>
+        <a href="ver-tiendas.html">Tiendas</a>
+        <a href="asignar-turnos.html">Turnos</a>
+        <a href="fichajes.html">Fichajes</a>
+      </nav>
+      <button class="btn btn-outline" id="btnTheme" title="Cambiar tema"></button>
+      <div class="user" id="userBox">
+        <span id="userLabel">No autenticado</span>
+        <a class="btn btn-outline" href="login.html" id="btnLogin">Entrar</a>
+        <button class="btn" id="btnLogout" style="display:none">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1 class="title">Horas asignadas</h1>
+      <p class="subtitle">Resumen por empleado y por mes.</p>
+    </section>
+
+    <div class="card" style="margin-bottom:12px;">
+      <div class="row" style="grid-template-columns: 1fr 200px 1fr; align-items: end;">
+        <div class="field">
+          <label for="selTienda">Centro de trabajo</label>
+          <select id="selTienda"></select>
+        </div>
+        <div class="field">
+          <label for="selAnio">Año</label>
+          <select id="selAnio"></select>
+        </div>
+        <div class="controls">
+          <button class="btn btn-secondary" id="btnJson">Ver JSON</button>
+          <button class="btn" id="btnExport">Exportar JSON</button>
+        </div>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table id="tbl" style="display:none">
+        <thead>
+          <tr>
+            <th>Empleado</th>
+            <th>Total</th>
+            <th>E</th><th>F</th><th>M</th><th>A</th><th>M</th><th>J</th><th>J</th><th>A</th><th>S</th><th>O</th><th>N</th><th>D</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <div id="json" class="jsonbox" style="display:none"></div>
+  </main>
+
+  <footer>
+    <div class="container foot">
+      <div>&copy; <span id="y"></span> RRHH App</div>
+      <div><a href="#" id="goTop">Ir arriba</a></div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    const API = 'http://localhost:3000/api';
+    const PLAN = API + '/planificacion';
+    const selTienda = document.getElementById('selTienda');
+    const selAnio = document.getElementById('selAnio');
+    const tbody = document.getElementById('tbody');
+    const tbl = document.getElementById('tbl');
+    const jsonBox = document.getElementById('json');
+    const status = document.getElementById('status');
+    const btnJson = document.getElementById('btnJson');
+    const btnExport = document.getElementById('btnExport');
+
+    function getToken(){ return localStorage.getItem('token') || ''; }
+    function authHeaders(){ const h={'Content-Type':'application/json'}; const t=getToken(); if (t) h['Authorization'] = `Bearer ${t}`; return h; }
+    function decodeUser(){ try { const r=localStorage.getItem('user'); return r?JSON.parse(r):null; } catch { return null; } }
+    function uidOf(u){ const n = Number(u?.uid || u?.id_usuario || u?.id || u?.ID); return Number.isFinite(n)?n:null; }
+
+    const state = { me:null, data:null };
+
+    async function loadBase(){
+      state.me = decodeUser(); if (!state.me){ alert('Inicia sesión'); location.href='login.html'; return; }
+      // tiendas
+      let tiendas=[]; try { const r=await fetch(`${API}/tiendas`, { headers: authHeaders() }); tiendas = r.ok? await r.json(): []; } catch { tiendas=[]; }
+      selTienda.innerHTML=''; for (const t of tiendas){ const o=document.createElement('option'); o.value=t.id_tienda; o.textContent=t.nombre; selTienda.appendChild(o); }
+      const rol = String(state.me?.rol||'').toLowerCase(); const myUid = uidOf(state.me);
+      if (rol==='jefe' || rol==='encargado'){ const mine = tiendas.find(t=> Number(t.id_jefe)===Number(myUid)); if (mine){ selTienda.value=String(mine.id_tienda); selTienda.disabled=true; } }
+      // años
+      let anios=[]; try{ const r=await fetch(`${PLAN}/anios`); anios=r.ok? await r.json(): []; }catch{ anios=[]; }
+      if (!anios.length) anios=[{ valor: new Date().getFullYear() }];
+      selAnio.innerHTML=''; for (const a of anios){ const o=document.createElement('option'); o.value=a.valor; o.textContent=a.valor; selAnio.appendChild(o); }
+      selAnio.value = String(new Date().getFullYear());
+      selTienda.onchange = loadData; selAnio.onchange = loadData;
+      await loadData();
+    }
+
+    async function loadData(){
+      const tienda = selTienda.value; const anio = selAnio.value;
+      if (!tienda || !anio){ status.textContent='Selecciona tienda y año'; return; }
+      status.textContent='Cargando...';
+      try{
+        const r = await fetch(`${PLAN}/horas?tienda=${encodeURIComponent(tienda)}&anio=${encodeURIComponent(anio)}`, { headers: authHeaders() });
+        const j = await r.json(); if (!r.ok){ status.textContent = j.error||r.statusText; return; }
+        state.data = j; status.textContent = 'OK';
+        renderTable(); renderJson();
+      } catch { status.textContent='Error de red'; }
+    }
+
+    function renderTable(){
+      const d = state.data; if (!d){ tbl.style.display='none'; return; }
+      tbody.innerHTML='';
+      for (const e of d.empleados||[]){
+        const tr = document.createElement('tr');
+        const months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+        tr.innerHTML = `<td>${e.nombre}</td><td>${Number(e.total||0).toFixed(2)}</td>` + months.map(m=>`<td>${Number((e.meses||{})[m]||0).toFixed(2)}</td>`).join('');
+        tbody.appendChild(tr);
+      }
+      tbl.style.display = 'table';
+    }
+
+    function renderJson(){
+      jsonBox.textContent = JSON.stringify(state.data || {}, null, 2);
+    }
+
+    btnJson.onclick = ()=>{
+      const on = jsonBox.style.display !== 'none';
+      jsonBox.style.display = on ? 'none' : 'block';
+    };
+    btnExport.onclick = ()=>{
+      const blob = new Blob([JSON.stringify(state.data||{}, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'horas.json'; a.click();
+    };
+
+    loadBase();
+  </script>
+</body>
+</html>
+

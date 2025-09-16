@@ -1,0 +1,15 @@
+// Roles
+      const rol = String(state.me?.rol||'').toLowerCase();
+      if (rol === 'jefe' || rol === 'encargado') {
+        const mine = state.tiendas.find(t=> Number(t.id_jefe) === Number(state.me.uid));
+        if (!mine) { alert('No tienes un centro asignado. Contacta con un administrador.'); return; }
+        tiendasSel.value = String(mine.id_tienda);
+        tiendasSel.disabled = true; // solo Admin puede cambiar centro
+        anioSel.disabled = true; // solo Admin puede cambiar año
+        autoTools.style.display = 'block';
+      } else if (rol === 'admin' || rol === 'administrador') {
+        adminTools.style.display = 'block';
+        autoTools.style.display = 'block';
+      }
+
+      

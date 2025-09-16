@@ -1,0 +1,34 @@
+async function cargarBase(){
+      state.me = getMe();
+      if (!state.me) { alert('Inicia sesión para continuar'); window.location.href='login.html'; return; }
+
+      // Tiendas
+      state.tiendas = await fetch(`${API}/tiendas`, { headers: authHeaders() }).then(r=>r.json());
+      tiendasSel.innerHTML = '';
+      for (const t of state.tiendas){ const o=document.createElement('option'); o.value=t.id_tienda; o.textContent=t.nombre; tiendasSel.appendChild(o); }
+
+      // Años
+      state.anios = await fetch(`${PLAN}/anios`).then(r=>r.json());
+      anioSel.innerHTML = '';
+      for (const a of state.anios){ const o=document.createElement('option'); o.value=a.valor; o.textContent=a.valor; anioSel.appendChild(o); }
+      anioSel.value = String(state.year);
+
+      // Roles
+      const rol = String(state.me?.rol||'').toLowerCase();
+      if (rol === 'jefe' || rol === 'encargado') {
+        const mine = state.tiendas.find(t=> Number(t.id_jefe) === Number(state.me.uid));
+        if (!mine) { alert('No tienes un centro asignado. Contacta con un administrador.'); return; }
+        tiendasSel.value = String(mine.id_tienda);
+        tiendasSel.disabled = true; // solo Admin puede cambiar centro
+        anioSel.disabled = true; // solo Admin puede cambiar año
+        autoTools.style.display = 'block';
+      } else if (rol === 'admin' || rol === 'administrador') {
+        adminTools.style.display = 'block';
+        autoTools.style.display = 'block';
+      }
+
+      await cargarDatos();
+      renderTurnosGrid();
+    }
+
+    

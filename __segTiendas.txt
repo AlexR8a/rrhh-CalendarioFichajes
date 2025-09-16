@@ -1,0 +1,8 @@
+// Tiendas
+      state.tiendas = await fetch(`${API}/tiendas`, { headers: authHeaders() }).then(r=>r.json());
+      tiendasSel.innerHTML = '';
+      for (const t of state.tiendas){ const o=document.createElement('option'); o.value=t.id_tienda; o.textContent=t.nombre; tiendasSel.appendChild(o); }
+
+      // Años
+      state.anios = await fetch(`${PLAN}/anios`).then(r=>r.json());
+      anioSel.innerH

@@ -1,0 +1,10 @@
+ } else if (rol === 'admin' || rol === 'administrador') {
+        adminTools.style.display = 'block';
+        autoTools.style.display = 'block';
+      }
+
+      await cargarDatos();
+      renderTurnosGrid();
+    }
+
+    as

@@ -43,6 +43,15 @@ async function ensureTables() {
 
 ensureTables().catch((e) => console.error('[planificacion] ensureTables error:', e));
 
+// Logger básico para este router
+router.use((req, _res, next) => {
+  try {
+    const meta = { uid: req.user?.uid, rol: req.user?.rol };
+    console.log(`[planificacion] ${req.method} ${req.url}`, meta);
+  } catch (_) {}
+  next();
+});
+
 // Codigos de turno: listar
 router.get('/codigos', async (req, res) => {
   try {
@@ -56,7 +65,9 @@ router.get('/codigos', async (req, res) => {
 // Crear/actualizar código de turno (admin)
 router.post('/codigos', authenticate, async (req, res) => {
   try {
-    if (!isAdminLike(req)) return res.status(403).json({ error: 'No autorizado' });
+    // Permitir tambi en encargado/jefe, no solo admin
+    const rol = String(req.user?.rol || '').toLowerCase();
+    if (!isAdminLike(req) && !isEncargadoLike(rol)) return res.status(403).json({ error: 'No autorizado' });
     let { id_turno_codigo, codigo, descripcion, horas, activo } = req.body || {};
     codigo = String(codigo || '').trim();
     if (!codigo) return res.status(400).json({ error: 'Código requerido' });
@@ -83,7 +94,8 @@ router.post('/codigos', authenticate, async (req, res) => {
 // Desactivar código (admin)
 router.delete('/codigos/:id', authenticate, async (req, res) => {
   try {
-    if (!isAdminLike(req)) return res.status(403).json({ error: 'No autorizado' });
+    const rol = String(req.user?.rol || '').toLowerCase();
+    if (!isAdminLike(req) && !isEncargadoLike(rol)) return res.status(403).json({ error: 'No autorizado' });
     const { id } = req.params;
     const updated = await db('TurnosCodigo').where({ id_turno_codigo: id }).update({ activo: 0 });
     if (!updated) return res.status(404).json({ error: 'No encontrado' });
@@ -180,6 +192,7 @@ router.put('/asignacion', authenticate, async (req, res) => {
 router.post('/asignaciones/bulk', authenticate, async (req, res) => {
   try {
     const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    console.log('[planificacion] bulk inside route', { uid: req.user?.uid, rol: req.user?.rol, items: items.length, sample: items[0] });
     if (!items.length) return res.status(400).json({ error: 'items vacío' });
     const rol = String(req.user?.rol || '').toLowerCase();
     const admin = isAdminLike(req);
@@ -253,5 +266,36 @@ router.post('/auto/patron-semanal', authenticate, async (req, res) => {
   }
 });
 
-module.exports = router;
+// Horas agregadas por trabajador (y por mes) para una tienda y año
+router.get('/horas', async (req, res) => {
+  try {
+    const tienda = parseInt(req.query.tienda, 10);
+    const anio = parseInt(req.query.anio, 10);
+    if (!tienda || !anio) return res.status(400).json({ error: 'Parámetros tienda y anio requeridos' });
+    const rows = await db('PlanificacionAsignaciones as P')
+      .join('Trabajadores as T', 'T.id_trabajador', 'P.id_trabajador')
+      .join('Usuarios as U', 'U.id_usuario', 'T.id_trabajador')
+      .leftJoin('TurnosCodigo as C', 'C.id_turno_codigo', 'P.id_turno_codigo')
+      .where('T.id_tienda', tienda)
+      .whereRaw('YEAR(P.fecha) = ?', [anio])
+      .groupBy('P.id_trabajador', 'U.nombre', db.raw('MONTH(P.fecha)'))
+      .select(
+        'P.id_trabajador',
+        'U.nombre',
+        db.raw('MONTH(P.fecha) as mes'),
+        db.raw('COALESCE(SUM(C.horas),0) as horas')
+      );
+    const map = new Map();
+    for (const r of rows){
+      const id = r.id_trabajador; const mes = String(r.mes).padStart(2,'0'); const h = Number(r.horas||0);
+      if (!map.has(id)) map.set(id, { id_trabajador: id, nombre: r.nombre, total: 0, meses: {} });
+      const obj = map.get(id); obj.meses[mes] = h; obj.total += h;
+    }
+    res.json({ tienda, anio, empleados: Array.from(map.values()) });
+  } catch (err) {
+    console.error('[planificacion] /horas error', err);
+    res.status(500).json({ error: 'Error al calcular horas' });
+  }
+});
 
+module.exports = router;

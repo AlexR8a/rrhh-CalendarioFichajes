@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Planificador horario – Standalone</title>
+<style>
+  :root{
+    --magenta:#b6106d;   /* cabecera meses */
+    --rosa:#e88c8c;      /* banda semanas */
+    --gris:#f5f5f7;
+    --borde:#d0d0d0;
+  }
+  body{font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; background:#ffffff; color:#222;}
+  .wrap{padding:16px; display:flex; flex-direction:column; gap:16px;}
+  .toolbar{display:flex; gap:12px; flex-wrap:wrap; align-items:center}
+  select,input,button{padding:6px 10px; border:1px solid var(--borde); border-radius:8px; background:white}
+  button{cursor:pointer}
+  .panel{border:1px solid var(--borde); border-radius:12px; padding:12px}
+  .grid3{display:grid; grid-template-columns:repeat(3, minmax(220px,1fr)); gap:12px}
+  .turno-row{display:grid; grid-template-columns:1fr 70px; gap:8px; align-items:center; padding:4px 0; border-bottom:1px dashed #eee}
+  .turno-code{width:100%; padding:6px 8px; border:1px solid var(--borde); border-radius:8px}
+  .turno-hours{width:100%; padding:6px 8px; border:1px solid var(--borde); border-radius:8px; text-align:right}
+  .tabla{overflow:auto; border:1px solid var(--borde); border-radius:12px}
+  table{border-collapse:collapse; width:max-content; min-width:100%}
+  th,td{border:1px solid #e3e3e3; padding:4px 6px; text-align:center; white-space:nowrap; font-size:12px}
+  th.emp, td.emp{position:sticky; left:0; background:white; z-index:2}
+  th.total, td.total{position:sticky; right:0; background:#fff; z-index:2}
+  th.mes{background:var(--magenta); color:#fff; font-weight:700; border-color:#9a0e5f}
+  td.semana{background:var(--rosa); font-weight:600}
+  .sem-split{border-left:3px solid #00000020}
+  .mes-split-top{border-top:3px solid #00000020}
+  .celda{cursor:pointer; min-width:26px; height:24px}
+  .celda:hover{background:#fff8cc}
+  .small{font-size:11px; color:#555}
+  .pill{padding:4px 8px; background:var(--gris); border-radius:999px; border:1px solid var(--borde)}
+  .actions{display:flex; gap:8px; flex-wrap:wrap}
+
+  /* ===== UI de avisos en ROJO para integrar ===== */
+  .todo-red{color:#b00020; border:1px dashed #b00020; background:#fff5f6; padding:10px; border-radius:10px}
+  .todo-red code{background:#ffe8eb; padding:2px 6px; border-radius:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 🔴 PANEL DE INTEGRACIONES PENDIENTES (visible en la página) -->
+  <div class="panel todo-red">
+    <strong>🔴 Puntos de integración (pendientes de tu tabla de empleados y salida a otras hojas)</strong>
+    <ol style="margin:8px 0 0 18px">
+      <li>
+        <b>Vincular TABLA DE EMPLEADOS externa</b>: Implementa <code>loadEmpleadosDesdeFuenteExterna()</code> en el bloque
+        <code>/* ===== 🔴 PUNTO DE INTEGRACIÓN: TABLA DE EMPLEADOS ===== */</code>. Debe devolver un objeto con la forma
+        <code>{ centros: { centroId: { nombre: string, empleados: string[] } } }</code>. Si no devuelve datos, se usa el ejemplo local.
+      </li>
+      <li>
+        <b>Enviar DATOS a otra hoja / sistema</b>: Usa <code>getEstadoParaExportar()</code> y adapta <code>enviarAHojaExterna()</code>
+        en el bloque <code>/* ===== 🔴 PUNTO DE INTEGRACIÓN: ENVÍO A OTRAS HOJAS ===== */</code>.
+      </li>
+    </ol>
+  </div>
+
+  <!-- Barra superior -->
+  <div class="toolbar panel">
+    <div>
+      <label><strong>Centro:</strong></label>
+      <select id="centroSel"></select>
+    </div>
+    <div>
+      <label><strong>Año:</strong></label>
+      <select id="anioSel"></select>
+    </div>
+    <span class="pill">Haz clic en una celda para asignar un turno</span>
+    <div class="actions" style="margin-left:auto">
+      <button id="exportBtn">Exportar JSON</button>
+      <button id="importBtn">Importar JSON</button>
+      <input id="fileInput" type="file" accept="application/json" style="display:none" />
+      <button id="resetBtn" title="Borra los datos guardados">Reiniciar datos</button>
+      <!-- 🔴 Botón opcional de envío a otra hoja (desactivado si no hay integración) -->
+      <button id="sendBtn" title="Envia el estado a otra hoja/sistema">Enviar a otra hoja</button>
+    </div>
+  </div>
+
+  <!-- Turnos 3x5 -->
+  <div class="panel">
+    <h3 style="margin:0 0 8px 0">Turnos (máx. 15) – código y horas</h3>
+    <div class="grid3" id="turnosGrid"></div>
+    <p class="small">El código (letra/símbolo) es lo que se asigna en el calendario. Las horas se usan para el total.</p>
+  </div>
+
+  <!-- Calendario -->
+  <div class="tabla">
+    <table id="calendario"></table>
+  </div>
+</div>
+
+<script>
+/* ========= Datos iniciales ========= */
+const STORAGE_KEY = "planificador_standalone_v1";
+
+/* Centros con empleados de ejemplo (puedes editar nombres) */
+const BASE = {
+  centros: {
+    centroA: { nombre: "Centro A", empleados: ["Ana Vidal","Bruno Pérez","Carla Ruiz","Diego Gómez"] },
+    centroB: { nombre: "Centro B", empleados: ["Elena Soto","Fabián León","Gala Martín"] }
+  },
+  turnos: [
+    { codigo:"P",  horas:7.5 }, { codigo:"M",  horas:8   }, { codigo:"T",  horas:7.5 },
+    { codigo:"m1", horas:4   }, { codigo:"t1", horas:5   }, { codigo:"m2", horas:5   },
+    { codigo:"t2", horas:6   }, { codigo:"P1", horas:0   }, { codigo:"FS", horas:0   },
+    { codigo:"C",  horas:0   }, { codigo:"X",  horas:7   }, { codigo:"Y",  horas:8   },
+    { codigo:"Z",  horas:6   }, { codigo:"R",  horas:5   }, { codigo:"L",  horas:4   },
+  ],
+  asignaciones: {} // clave: `${centro}|${anio}|${empleado}|${fechaISO}` → "codigoTurno"
+};
+
+/* ========= 🔴 PUNTO DE INTEGRACIÓN: TABLA DE EMPLEADOS =========
+   Implementa UNA de estas opciones dentro de loadEmpleadosDesdeFuenteExterna():
+   - Leer desde API/BD (fetch a tu endpoint)
+   - Leer CSV/Excel local (File input) y mapear a {centros: {...}}
+   - Leer Google Sheets (API) / SharePoint / etc.
+   Debe devolver un objeto con la forma: { centros: { id: { nombre, empleados:[...]} } }.
+   Si devuelve null/undefined o lanza error, se usará BASE por defecto.
+=============================================================== */
+async function loadEmpleadosDesdeFuenteExterna(){
+  // 🔴 EJEMPLO 1: (DESCOMENTA Y ADAPTA) Cargar de una API propia
+  // try{
+  //   const res = await fetch("https://tu-servidor/empleados");
+  //   if(!res.ok) throw new Error("HTTP " + res.status);
+  //   const datos = await res.json();
+  //   // Asegura que datos tenga la forma { centros: { id: { nombre, empleados:[] } } }
+  //   return datos;
+  // }catch(err){ console.warn("No se pudo cargar empleados externos:", err); return null; }
+
+  // 🔴 EJEMPLO 2: (DESCOMENTA) Cargar de un CSV mapeado
+  // const csv = await (await fetch("/ruta/empleados.csv")).text();
+  // const centros = parsearCSVEmpleados(csv); // define esta función para tu formato
+  // return { centros };
+
+  // 🔴 EJEMPLO 3: (DESCOMENTA) Google Sheets
+  // const sheet = await fetchTuSheet(...);
+  // return normalizarSheet(sheet);
+
+  return null; // ← Por defecto, sin integración externa
+}
+
+/* ========= Utilidades ========= */
+const pad = n => String(n).padStart(2,'0');
+function fechaISO(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+
+/* Semana ISO */
+function getISOWeek(date){
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+}
+
+/* Días del año */
+function diasDelAnio(anno){
+  const arr = [];
+  const start = new Date(anno,0,1);
+  const end   = new Date(anno,11,31);
+  for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+    arr.push({
+      fecha: new Date(d),
+      iso: fechaISO(d),
+      dia: d.getDate(),
+      mes: d.toLocaleString('es-ES',{month:'long'}).toUpperCase(),
+      numMes: d.getMonth(), // 0-11
+      semana: getISOWeek(d),
+      dow: d.getDay() // 0=Dom
+    });
+  }
+  return arr;
+}
+
+/* ========= Estado (con persistencia) ========= */
+let state = null;
+async function load(){
+  const saved = localStorage.getItem(STORAGE_KEY);
+  const savedObj = saved ? JSON.parse(saved) : null;
+
+  // Intentar cargar empleados desde fuente externa (🔴 integración)
+  let externos = null;
+  try{ externos = await loadEmpleadosDesdeFuenteExterna(); }catch(e){ externos = null; }
+
+  // Base inicial
+  const base = structuredClone(BASE);
+  if(externos && externos.centros){ base.centros = externos.centros; }
+
+  state = savedObj ? { ...base, ...savedObj, centros: savedObj.centros || base.centros } : base;
+}
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+/* ========= UI: combos y turnos ========= */
+const centroSel = document.getElementById('centroSel');
+const anioSel   = document.getElementById('anioSel');
+const turnosGrid= document.getElementById('turnosGrid');
+const tabla     = document.getElementById('calendario');
+
+function initCombos(){
+  // Centros
+  centroSel.innerHTML = "";
+  Object.entries(state.centros).forEach(([id, c])=>{
+    const opt = document.createElement('option');
+    opt.value = id; opt.textContent = c.nombre;
+    centroSel.appendChild(opt);
+  });
+  // Años: actual ±1
+  const y = new Date().getFullYear();
+  anioSel.innerHTML = "";
+  [y-1, y, y+1].forEach(v=>{
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v;
+    anioSel.appendChild(opt);
+  });
+  // Valores por defecto
+  if(!centroSel.value) centroSel.value = Object.keys(state.centros)[0];
+  if(!anioSel.value) anioSel.value = String(y);
+}
+
+function renderTurnos(){
+  turnosGrid.innerHTML = "";
+  // 3 columnas de 5
+  for(let col=0; col<3; col++){
+    const box = document.createElement('div');
+    for(let i=col*5; i<col*5+5; i++){
+      const t = state.turnos[i] || { codigo:"", horas:0 };
+      if(!state.turnos[i]) state.turnos[i] = t;
+      const row = document.createElement('div'); row.className='turno-row';
+      const code = document.createElement('input'); code.className='turno-code';
+      code.maxLength = 3; code.value = t.codigo;
+      code.oninput = (e)=>{ state.turnos[i].codigo = e.target.value.trim().toUpperCase(); save(); };
+      const hours = document.createElement('input'); hours.className='turno-hours'; hours.type='number'; hours.step='0.5';
+      hours.value = t.horas;
+      hours.oninput = (e)=>{ state.turnos[i].horas = parseFloat(e.target.value||0); save(); actualizarTotales(); };
+      row.append(code); row.append(hours);
+      box.append(row);
+    }
+    turnosGrid.append(box);
+  }
+}
+
+/* ========= Calendario ========= */
+function renderCalendario(){
+  const centro = centroSel.value;
+  const anio = parseInt(anioSel.value,10);
+  const empleados = state.centros[centro].empleados;
+  const dias = diasDelAnio(anio);
+
+  // Meses y colspans
+  const meses = [];
+  let i=0;
+  while(i<dias.length){
+    const m = dias[i].mes;
+    let count=0; let j=i;
+    while(j<dias.length && dias[j].mes===m){ count++; j++; }
+    meses.push({ nombre:m, span:count });
+    i=j;
+  }
+
+  // Tabla
+  const thead1 = document.createElement('tr');
+  const thEmp = document.createElement('th'); thEmp.textContent="Empleado"; thEmp.className="emp"; thead1.appendChild(thEmp);
+  meses.forEach(m=>{
+    const th=document.createElement('th'); th.className='mes'; th.colSpan=m.span; th.textContent=m.nombre;
+    thead1.appendChild(th);
+  });
+  const thTot = document.createElement('th'); thTot.textContent="Total horas"; thTot.className="total"; thead1.appendChild(thTot);
+
+  const thead2 = document.createElement('tr');
+  const empty2 = document.createElement('th'); empty2.className='emp'; thead2.appendChild(empty2);
+  dias.forEach((d,idx)=>{
+    const td=document.createElement('td'); td.className='semana'; td.textContent='S'+d.semana;
+    if(idx>0 && dias[idx-1].semana!==d.semana) td.classList.add('sem-split');
+    thead2.appendChild(td);
+  });
+  const empty2b = document.createElement('th'); empty2b.className='total'; thead2.appendChild(empty2b);
+
+  const thead3 = document.createElement('tr');
+  const empty3 = document.createElement('th'); empty3.className='emp'; thead3.appendChild(empty3);
+  dias.forEach((d,idx)=>{
+    const td=document.createElement('td'); td.textContent=d.dia;
+    if(idx>0 && dias[idx-1].numMes!==d.numMes) td.classList.add('mes-split-top');
+    if(idx>0 && dias[idx-1].semana!==d.semana) td.classList.add('sem-split');
+    thead3.appendChild(td);
+  });
+  const empty3b = document.createElement('th'); empty3b.className='total'; thead3.appendChild(empty3b);
+
+  const thead = document.createElement('thead'); thead.append(thead1, thead2, thead3);
+
+  const tbody = document.createElement('tbody');
+  empleados.forEach((nombre, idxEmp)=>{
+    const tr=document.createElement('tr');
+    const tdEmp=document.createElement('td'); tdEmp.textContent=nombre; tdEmp.className='emp'; tr.appendChild(tdEmp);
+
+    dias.forEach(d=>{
+      const td=document.createElement('td'); td.className='celda';
+      const key = `${centro}|${anio}|${idxEmp}|${d.iso}`;
+      const val = state.asignaciones[key] || "";
+      td.textContent = val;
+
+      td.onclick = ()=>{
+        const codigos = state.turnos.map(t=>t.codigo).filter(Boolean);
+        const nuevo = prompt(`Código de turno (${codigos.join(", ")}). Vacío para borrar:`, val || "");
+        if(nuevo===null) return; // cancelado
+        const clean = (nuevo||"").trim().toUpperCase();
+        if(clean && !codigos.includes(clean)){
+          alert("Ese código no está definido en la tabla de turnos.");
+          return;
+        }
+        if(clean){
+          state.asignaciones[key]=clean;
+          td.textContent=clean;
+        }else{
+          delete state.asignaciones[key];
+          td.textContent="";
+        }
+        save(); actualizarTotales();
+      };
+
+      td.classList.toggle('sem-split', true && (()=>{const i=dias.indexOf(d); return i>0 && dias[i-1].semana!==d.semana;})());
+      tr.appendChild(td);
+    });
+
+    const tdTot=document.createElement('td'); tdTot.className='total'; tdTot.id=`tot-${centro}-${anio}-${idxEmp}`;
+    tr.appendChild(tdTot);
+    tbody.appendChild(tr);
+  });
+
+  tabla.innerHTML="";
+  tabla.appendChild(thead);
+  tabla.appendChild(tbody);
+
+  actualizarTotales();
+}
+
+function actualizarTotales(){
+  const centro = centroSel.value;
+  const anio = parseInt(anioSel.value,10);
+  const empleados = state.centros[centro].empleados;
+
+  // mapa código→horas
+  const horas = {};
+  state.turnos.forEach(t=>{ if(t.codigo) horas[t.codigo]=Number(t.horas)||0; });
+
+  empleados.forEach((_, idxEmp)=>{
+    let total=0;
+    const prefix = `${centro}|${anio}|${idxEmp}|`;
+    Object.entries(state.asignaciones).forEach(([k, code])=>{
+      if(k.startsWith(prefix)) total += (horas[code]||0);
+    });
+    const td = document.getElementById(`tot-${centro}-${anio}-${idxEmp}`);
+    if(td) td.textContent = total.toLocaleString('es-ES', {maximumFractionDigits:2});
+  });
+}
+
+/* ========= Exportar / Importar / Reset ========= */
+function getEstadoParaExportar(){
+  // Estructura estable para integraciones externas
+  return {
+    centros: state.centros,
+    turnos: state.turnos,
+    asignaciones: state.asignaciones
+  };
+}
+
+document.getElementById('exportBtn').onclick = ()=>{
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'planificador.json';
+  a.click();
+};
+
+document.getElementById('importBtn').onclick = ()=>{
+  document.getElementById('fileInput').click();
+};
+document.getElementById('fileInput').onchange = (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      if(!data.centros || !data.turnos) throw new Error("Formato no válido");
+      state = data; save();
+      initCombos(); renderTurnos(); renderCalendario();
+    }catch(err){ alert("Archivo inválido: " + err.message); }
+  };
+  reader.readAsText(file);
+};
+
+document.getElementById('resetBtn').onclick = ()=>{
+  if(confirm("Esto borrará los datos guardados y restaurará el ejemplo. ¿Continuar?")){
+    state = structuredClone(BASE); save();
+    initCombos(); renderTurnos(); renderCalendario();
+  }
+};
+
+/* ========= 🔴 PUNTO DE INTEGRACIÓN: ENVÍO A OTRAS HOJAS =========
+   Adapta enviarAHojaExterna() para tu destino (p.ej. Google Sheets, Excel JS API, endpoint REST).
+   Ejemplos:
+   - Google Apps Script WebApp: fetch(POST) con JSON de getEstadoParaExportar()
+   - Excel en escritorio (Office Scripts): usar Excel.run desde un add-in
+   - SharePoint/PowerAutomate: HTTP request con JSON
+=============================================================== */
+async function enviarAHojaExterna(payload){
+  // 🔴 EJEMPLO genérico (REST):
+  // await fetch("https://tu-servidor/planificador", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+  alert("🔴 Envío externo no configurado. Adapta la función enviarAHojaExterna().");
+}
+
+document.getElementById('sendBtn').onclick = async ()=>{
+  const data = getEstadoParaExportar();
+  try{ await enviarAHojaExterna(data); }catch(e){ alert("No se pudo enviar: " + e.message); }
+};
+
+/* ========= Inicio ========= */
+(async function(){
+  await load();
+  initCombos();
+  renderTurnos();
+  renderCalendario();
+
+  centroSel.onchange = ()=>{ renderCalendario(); };
+  anioSel.onchange   = ()=>{ renderCalendario(); };
+})();
+</script>
+</body>
+</html>

@@ -4,7 +4,10 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "seed:test": "node backend/db/seed_test_data.js"
+    "seed:test": "node backend/db/seed_test_data.js",
+    "db:export": "node backend/db/export_import.js --export ejemplos/rrhh_dump.json",
+    "db:import": "node backend/db/export_import.js --import ejemplos/rrhh_dump.json --truncate",
+    "db:make-sample-dump": "node backend/db/seed_test_data.js && node backend/db/export_import.js --export ejemplos/rrhh_sample_dump.json"
   },
   "keywords": [],
   "author": "",

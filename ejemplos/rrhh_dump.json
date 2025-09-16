@@ -1,0 +1,723 @@
+{
+  "meta": {
+    "exportedAt": "2025-09-12T15:49:48.409Z",
+    "database": "rrhh_db",
+    "tables": [
+      "asignacionesturno",
+      "asistencias",
+      "ausencias",
+      "fichajes",
+      "historialcambios",
+      "planificacionasignaciones",
+      "requerimientosturno",
+      "tiendas",
+      "tiposturno",
+      "trabajadores",
+      "turnos",
+      "turnoscodigo",
+      "usuarios"
+    ]
+  },
+  "data": {
+    "asignacionesturno": [
+      {
+        "id_asignacion": 5,
+        "id_trabajador": 9,
+        "id_turno": 2,
+        "fecha": "2025-08-30T22:00:00.000Z",
+        "asignado_por": null,
+        "fecha_asignacion": "2025-09-04T10:37:07.000Z"
+      },
+      {
+        "id_asignacion": 7,
+        "id_trabajador": 9,
+        "id_turno": 2,
+        "fecha": "2025-08-29T22:00:00.000Z",
+        "asignado_por": null,
+        "fecha_asignacion": "2025-09-04T10:37:17.000Z"
+      },
+      {
+        "id_asignacion": 8,
+        "id_trabajador": 8,
+        "id_turno": 2,
+        "fecha": "2025-08-30T22:00:00.000Z",
+        "asignado_por": null,
+        "fecha_asignacion": "2025-09-04T11:18:30.000Z"
+      },
+      {
+        "id_asignacion": 9,
+        "id_trabajador": 14,
+        "id_turno": 3,
+        "fecha": "2025-09-05T22:00:00.000Z",
+        "asignado_por": 12,
+        "fecha_asignacion": "2025-09-08T10:25:37.000Z"
+      },
+      {
+        "id_asignacion": 11,
+        "id_trabajador": 15,
+        "id_turno": 5,
+        "fecha": "2025-09-06T22:00:00.000Z",
+        "asignado_por": 13,
+        "fecha_asignacion": "2025-09-08T10:25:37.000Z"
+      },
+      {
+        "id_asignacion": 12,
+        "id_trabajador": 15,
+        "id_turno": 5,
+        "fecha": "2025-09-08T22:00:00.000Z",
+        "asignado_por": 13,
+        "fecha_asignacion": "2025-09-08T10:25:37.000Z"
+      },
+      {
+        "id_asignacion": 13,
+        "id_trabajador": 14,
+        "id_turno": 4,
+        "fecha": "2025-09-06T22:00:00.000Z",
+        "asignado_por": 12,
+        "fecha_asignacion": "2025-09-08T14:55:13.000Z"
+      },
+      {
+        "id_asignacion": 14,
+        "id_trabajador": 14,
+        "id_turno": 3,
+        "fecha": "2025-09-06T22:00:00.000Z",
+        "asignado_por": 12,
+        "fecha_asignacion": "2025-09-08T15:10:18.000Z"
+      },
+      {
+        "id_asignacion": 15,
+        "id_trabajador": 14,
+        "id_turno": 3,
+        "fecha": "2025-08-30T22:00:00.000Z",
+        "asignado_por": null,
+        "fecha_asignacion": "2025-09-08T16:22:25.000Z"
+      },
+      {
+        "id_asignacion": 16,
+        "id_trabajador": 8,
+        "id_turno": 9,
+        "fecha": "2025-09-14T22:00:00.000Z",
+        "asignado_por": null,
+        "fecha_asignacion": "2025-09-09T11:13:41.000Z"
+      },
+      {
+        "id_asignacion": 17,
+        "id_trabajador": 9,
+        "id_turno": 9,
+        "fecha": "2025-09-14T22:00:00.000Z",
+        "asignado_por": null,
+        "fecha_asignacion": "2025-09-09T11:13:41.000Z"
+      },
+      {
+        "id_asignacion": 18,
+        "id_trabajador": 8,
+        "id_turno": 10,
+        "fecha": "2025-09-14T22:00:00.000Z",
+        "asignado_por": null,
+        "fecha_asignacion": "2025-09-09T11:13:41.000Z"
+      },
+      {
+        "id_asignacion": 19,
+        "id_trabajador": 8,
+        "id_turno": 11,
+        "fecha": "2025-09-14T22:00:00.000Z",
+        "asignado_por": null,
+        "fecha_asignacion": "2025-09-09T11:13:41.000Z"
+      }
+    ],
+    "asistencias": [],
+    "ausencias": [],
+    "fichajes": [
+      {
+        "id_fichaje": 1,
+        "id_trabajador": 14,
+        "fecha": "2025-09-04T22:00:00.000Z",
+        "hora_entrada": "09:05:00",
+        "hora_salida": "13:02:00",
+        "fuente": "fichaje",
+        "comentario": null
+      },
+      {
+        "id_fichaje": 2,
+        "id_trabajador": 14,
+        "fecha": "2025-09-05T22:00:00.000Z",
+        "hora_entrada": "16:02:00",
+        "hora_salida": "19:58:00",
+        "fuente": "fichaje",
+        "comentario": null
+      },
+      {
+        "id_fichaje": 3,
+        "id_trabajador": 15,
+        "fecha": "2025-09-04T22:00:00.000Z",
+        "hora_entrada": "10:10:00",
+        "hora_salida": "13:55:00",
+        "fuente": "fichaje",
+        "comentario": null
+      },
+      {
+        "id_fichaje": 4,
+        "id_trabajador": 15,
+        "fecha": "2025-09-05T22:00:00.000Z",
+        "hora_entrada": "15:00:00",
+        "hora_salida": "19:00:00",
+        "fuente": "fichaje",
+        "comentario": null
+      }
+    ],
+    "historialcambios": [],
+    "planificacionasignaciones": [
+      {
+        "id_asignacion": 1,
+        "id_trabajador": 14,
+        "fecha": "2024-12-31T23:00:00.000Z",
+        "id_turno_codigo": 1
+      },
+      {
+        "id_asignacion": 2,
+        "id_trabajador": 14,
+        "fecha": "2025-01-02T23:00:00.000Z",
+        "id_turno_codigo": 1
+      },
+      {
+        "id_asignacion": 3,
+        "id_trabajador": 14,
+        "fecha": "2025-01-13T23:00:00.000Z",
+        "id_turno_codigo": 1
+      },
+      {
+        "id_asignacion": 4,
+        "id_trabajador": 8,
+        "fecha": "2024-12-30T23:00:00.000Z",
+        "id_turno_codigo": 1
+      },
+      {
+        "id_asignacion": 5,
+        "id_trabajador": 9,
+        "fecha": "2025-01-01T23:00:00.000Z",
+        "id_turno_codigo": 1
+      }
+    ],
+    "requerimientosturno": [
+      {
+        "id_requerimiento": 1,
+        "id_turno": 1,
+        "fecha": "2025-08-31T22:00:00.000Z",
+        "cantidad": 2
+      },
+      {
+        "id_requerimiento": 2,
+        "id_turno": 2,
+        "fecha": "2025-08-31T22:00:00.000Z",
+        "cantidad": 4
+      },
+      {
+        "id_requerimiento": 3,
+        "id_turno": 2,
+        "fecha": "2025-09-01T22:00:00.000Z",
+        "cantidad": 3
+      },
+      {
+        "id_requerimiento": 4,
+        "id_turno": 2,
+        "fecha": "2025-09-02T22:00:00.000Z",
+        "cantidad": 3
+      },
+      {
+        "id_requerimiento": 5,
+        "id_turno": 2,
+        "fecha": "2025-09-03T22:00:00.000Z",
+        "cantidad": 3
+      },
+      {
+        "id_requerimiento": 6,
+        "id_turno": 2,
+        "fecha": "2025-09-04T22:00:00.000Z",
+        "cantidad": 3
+      },
+      {
+        "id_requerimiento": 7,
+        "id_turno": 2,
+        "fecha": "2025-09-05T22:00:00.000Z",
+        "cantidad": 3
+      },
+      {
+        "id_requerimiento": 8,
+        "id_turno": 2,
+        "fecha": "2025-09-06T22:00:00.000Z",
+        "cantidad": 4
+      },
+      {
+        "id_requerimiento": 9,
+        "id_turno": 2,
+        "fecha": "2025-08-29T22:00:00.000Z",
+        "cantidad": 3
+      },
+      {
+        "id_requerimiento": 10,
+        "id_turno": 2,
+        "fecha": "2025-08-30T22:00:00.000Z",
+        "cantidad": 3
+      },
+      {
+        "id_requerimiento": 11,
+        "id_turno": 3,
+        "fecha": "2025-09-05T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 12,
+        "id_turno": 4,
+        "fecha": "2025-09-05T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 13,
+        "id_turno": 5,
+        "fecha": "2025-09-05T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 14,
+        "id_turno": 6,
+        "fecha": "2025-09-05T22:00:00.000Z",
+        "cantidad": 2
+      },
+      {
+        "id_requerimiento": 15,
+        "id_turno": 3,
+        "fecha": "2025-09-06T22:00:00.000Z",
+        "cantidad": 2
+      },
+      {
+        "id_requerimiento": 16,
+        "id_turno": 4,
+        "fecha": "2025-09-06T22:00:00.000Z",
+        "cantidad": 6
+      },
+      {
+        "id_requerimiento": 17,
+        "id_turno": 5,
+        "fecha": "2025-09-06T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 18,
+        "id_turno": 6,
+        "fecha": "2025-09-06T22:00:00.000Z",
+        "cantidad": 2
+      },
+      {
+        "id_requerimiento": 19,
+        "id_turno": 3,
+        "fecha": "2025-09-07T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 20,
+        "id_turno": 4,
+        "fecha": "2025-09-07T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 21,
+        "id_turno": 5,
+        "fecha": "2025-09-07T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 22,
+        "id_turno": 6,
+        "fecha": "2025-09-07T22:00:00.000Z",
+        "cantidad": 2
+      },
+      {
+        "id_requerimiento": 23,
+        "id_turno": 3,
+        "fecha": "2025-09-08T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 24,
+        "id_turno": 4,
+        "fecha": "2025-09-08T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 25,
+        "id_turno": 5,
+        "fecha": "2025-09-08T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 26,
+        "id_turno": 6,
+        "fecha": "2025-09-08T22:00:00.000Z",
+        "cantidad": 2
+      },
+      {
+        "id_requerimiento": 27,
+        "id_turno": 3,
+        "fecha": "2025-09-09T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 28,
+        "id_turno": 4,
+        "fecha": "2025-09-09T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 29,
+        "id_turno": 5,
+        "fecha": "2025-09-09T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 30,
+        "id_turno": 6,
+        "fecha": "2025-09-09T22:00:00.000Z",
+        "cantidad": 2
+      },
+      {
+        "id_requerimiento": 31,
+        "id_turno": 3,
+        "fecha": "2025-09-10T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 32,
+        "id_turno": 4,
+        "fecha": "2025-09-10T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 33,
+        "id_turno": 5,
+        "fecha": "2025-09-10T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 34,
+        "id_turno": 6,
+        "fecha": "2025-09-10T22:00:00.000Z",
+        "cantidad": 2
+      },
+      {
+        "id_requerimiento": 35,
+        "id_turno": 3,
+        "fecha": "2025-09-11T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 36,
+        "id_turno": 4,
+        "fecha": "2025-09-11T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 37,
+        "id_turno": 5,
+        "fecha": "2025-09-11T22:00:00.000Z",
+        "cantidad": 1
+      },
+      {
+        "id_requerimiento": 38,
+        "id_turno": 6,
+        "fecha": "2025-09-11T22:00:00.000Z",
+        "cantidad": 2
+      },
+      {
+        "id_requerimiento": 39,
+        "id_turno": 3,
+        "fecha": "2025-08-30T22:00:00.000Z",
+        "cantidad": 2
+      },
+      {
+        "id_requerimiento": 40,
+        "id_turno": 3,
+        "fecha": "2025-08-31T22:00:00.000Z",
+        "cantidad": 2
+      },
+      {
+        "id_requerimiento": 41,
+        "id_turno": 9,
+        "fecha": "2025-09-14T22:00:00.000Z",
+        "cantidad": 2
+      },
+      {
+        "id_requerimiento": 42,
+        "id_turno": 10,
+        "fecha": "2025-09-14T22:00:00.000Z",
+        "cantidad": 2
+      },
+      {
+        "id_requerimiento": 43,
+        "id_turno": 11,
+        "fecha": "2025-09-14T22:00:00.000Z",
+        "cantidad": 1
+      }
+    ],
+    "tiendas": [
+      {
+        "id_tienda": 1,
+        "nombre": "Aro",
+        "direccion": "Aro",
+        "id_jefe": 15
+      },
+      {
+        "id_tienda": 3,
+        "nombre": "sadsada",
+        "direccion": "dsadasdas",
+        "id_jefe": null
+      },
+      {
+        "id_tienda": 4,
+        "nombre": "Tienda Norte",
+        "direccion": "Calle Norte 1",
+        "id_jefe": 12
+      },
+      {
+        "id_tienda": 5,
+        "nombre": "Tienda Sur",
+        "direccion": "Avenida Sur 2",
+        "id_jefe": 13
+      }
+    ],
+    "tiposturno": [
+      {
+        "id_tipo_turno": 1,
+        "nombre": "Caja",
+        "descripcion": null
+      },
+      {
+        "id_tipo_turno": 2,
+        "nombre": "Reposición",
+        "descripcion": null
+      }
+    ],
+    "trabajadores": [
+      {
+        "id_trabajador": 8,
+        "id_tienda": 1,
+        "fecha_alta": "2025-07-09T22:00:00.000Z"
+      },
+      {
+        "id_trabajador": 9,
+        "id_tienda": 1,
+        "fecha_alta": "2025-09-02T22:00:00.000Z"
+      },
+      {
+        "id_trabajador": 14,
+        "id_tienda": 4,
+        "fecha_alta": "2025-09-07T22:00:00.000Z"
+      },
+      {
+        "id_trabajador": 15,
+        "id_tienda": 5,
+        "fecha_alta": "2025-09-07T22:00:00.000Z"
+      }
+    ],
+    "turnos": [
+      {
+        "id_turno": 1,
+        "id_tienda": 3,
+        "id_tipo_turno": null,
+        "hora_inicio": "13:15:00",
+        "hora_fin": "15:00:00"
+      },
+      {
+        "id_turno": 2,
+        "id_tienda": 1,
+        "id_tipo_turno": null,
+        "hora_inicio": "04:00:00",
+        "hora_fin": "08:00:00"
+      },
+      {
+        "id_turno": 3,
+        "id_tienda": 4,
+        "id_tipo_turno": 1,
+        "hora_inicio": "09:00:00",
+        "hora_fin": "13:00:00"
+      },
+      {
+        "id_turno": 4,
+        "id_tienda": 4,
+        "id_tipo_turno": 2,
+        "hora_inicio": "16:00:00",
+        "hora_fin": "20:00:00"
+      },
+      {
+        "id_turno": 5,
+        "id_tienda": 5,
+        "id_tipo_turno": 1,
+        "hora_inicio": "10:00:00",
+        "hora_fin": "14:00:00"
+      },
+      {
+        "id_turno": 6,
+        "id_tienda": 5,
+        "id_tipo_turno": 2,
+        "hora_inicio": "15:00:00",
+        "hora_fin": "19:00:00"
+      },
+      {
+        "id_turno": 7,
+        "id_tienda": 4,
+        "id_tipo_turno": null,
+        "hora_inicio": "11:30:00",
+        "hora_fin": "15:30:00"
+      },
+      {
+        "id_turno": 8,
+        "id_tienda": 4,
+        "id_tipo_turno": 1,
+        "hora_inicio": "09:00:00",
+        "hora_fin": "10:00:00"
+      },
+      {
+        "id_turno": 9,
+        "id_tienda": 1,
+        "id_tipo_turno": null,
+        "hora_inicio": "09:00:00",
+        "hora_fin": "13:00:00"
+      },
+      {
+        "id_turno": 10,
+        "id_tienda": 1,
+        "id_tipo_turno": null,
+        "hora_inicio": "13:00:00",
+        "hora_fin": "17:00:00"
+      },
+      {
+        "id_turno": 11,
+        "id_tienda": 1,
+        "id_tipo_turno": null,
+        "hora_inicio": "17:00:00",
+        "hora_fin": "21:00:00"
+      }
+    ],
+    "turnoscodigo": [
+      {
+        "id_turno_codigo": 1,
+        "codigo": "a",
+        "descripcion": "",
+        "horas": "3.00",
+        "activo": 1,
+        "creado_en": "2025-09-10T12:32:23.000Z",
+        "actualizado_en": "2025-09-10T12:32:23.000Z"
+      },
+      {
+        "id_turno_codigo": 3,
+        "codigo": "j",
+        "descripcion": "",
+        "horas": "0.00",
+        "activo": 1,
+        "creado_en": "2025-09-10T12:41:31.000Z",
+        "actualizado_en": "2025-09-10T12:41:31.000Z"
+      },
+      {
+        "id_turno_codigo": 10,
+        "codigo": "B",
+        "descripcion": "",
+        "horas": "4.00",
+        "activo": 1,
+        "creado_en": "2025-09-12T15:36:42.000Z",
+        "actualizado_en": "2025-09-12T15:36:42.000Z"
+      }
+    ],
+    "usuarios": [
+      {
+        "id_usuario": 1,
+        "nombre": "Lucas",
+        "email": "lucasPelucas@gmail.com",
+        "contraseña_hash": "1234_Lucas",
+        "rol": "trabajador"
+      },
+      {
+        "id_usuario": 3,
+        "nombre": "Silvia",
+        "email": "s8alop@gmail.com",
+        "contraseña_hash": "ntnp",
+        "rol": "administrador"
+      },
+      {
+        "id_usuario": 4,
+        "nombre": "Paco Jones",
+        "email": "pajones@gmail.com",
+        "contraseña_hash": "1234_nometoquesloscojones",
+        "rol": "jefe"
+      },
+      {
+        "id_usuario": 5,
+        "nombre": "prueba1",
+        "email": "pru@ev.a",
+        "contraseña_hash": "1234",
+        "rol": "trabajador"
+      },
+      {
+        "id_usuario": 7,
+        "nombre": "prueba2",
+        "email": "pru@eva.2",
+        "contraseña_hash": "1234",
+        "rol": "trabajador"
+      },
+      {
+        "id_usuario": 8,
+        "nombre": "prueba3",
+        "email": "prueba@prueba.3",
+        "contraseña_hash": "1234",
+        "rol": "trabajador"
+      },
+      {
+        "id_usuario": 9,
+        "nombre": "asdf",
+        "email": "sdadsa@adjsako.dsa",
+        "contraseña_hash": "12312341432",
+        "rol": "trabajador"
+      },
+      {
+        "id_usuario": 10,
+        "nombre": "Admin Uno",
+        "email": "admin1@example.com",
+        "contraseña_hash": "Admin1234",
+        "rol": "administrador"
+      },
+      {
+        "id_usuario": 11,
+        "nombre": "Admin Dos",
+        "email": "admin2@example.com",
+        "contraseña_hash": "Admin1234",
+        "rol": "administrador"
+      },
+      {
+        "id_usuario": 12,
+        "nombre": "Jefe Norte",
+        "email": "jefe1@example.com",
+        "contraseña_hash": "Jefe1234",
+        "rol": "jefe"
+      },
+      {
+        "id_usuario": 13,
+        "nombre": "Jefe Sur",
+        "email": "jefe2@example.com",
+        "contraseña_hash": "Jefe1234",
+        "rol": "jefe"
+      },
+      {
+        "id_usuario": 14,
+        "nombre": "Trabajador Norte",
+        "email": "trab1@example.com",
+        "contraseña_hash": "",
+        "rol": "trabajador"
+      },
+      {
+        "id_usuario": 15,
+        "nombre": "Trabajador Sur",
+        "email": "trab2@example.com",
+        "contraseña_hash": "",
+        "rol": "jefe"
+      }
+    ]
+  }
+}

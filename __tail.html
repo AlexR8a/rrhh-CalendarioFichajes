@@ -1,0 +1,32 @@
+ncel.textContent='Cancelar';
+      actions.appendChild(bOk); actions.appendChild(bCancel); editor.appendChild(actions);
+      const rect = td.getBoundingClientRect(); editor.style.left = (rect.left + window.scrollX) + 'px'; editor.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+      document.body.appendChild(editor); openEditor = editor;
+      let closing = false; const close = ()=>{ if (closing) return; closing=true; try{ document.removeEventListener('click', onDoc, true);}catch{}; try{ editor.remove(); }catch{}; openEditor=null; };
+      const onDoc = (evt)=>{ if (!editor.contains(evt.target) && evt.target!==td) close(); };
+      setTimeout(()=> document.addEventListener('click', onDoc, true), 0);
+      bCancel.onclick = (evt)=>{ evt.preventDefault(); close(); };
+      bOk.onclick = async (evt)=>{
+        evt.preventDefault();
+        const val = sel.value || '';
+        const payload = { id_trabajador, fecha };
+        if (val) payload.id_turno_codigo = parseInt(val,10);
+        const res = await fetch(`${PLAN}/asignacion`, { method:'PUT', headers: authHeaders(), body: JSON.stringify(payload) });
+        const ok = res.ok; const j = await res.json().catch(()=>({})); if (!ok){ if(res.status===401){ sessionExpired(); return; } alert(j.error||res.statusText); return; }
+        if (payload.id_turno_codigo) state.mapaAsig.set(key, payload.id_turno_codigo); else state.mapaAsig.delete(key);
+        const code = payload.id_turno_codigo ? state.mapaCodigoPorId.get(payload.id_turno_codigo) : null;
+        td.title = code ? `${code.codigo} - ${code.descripcion||''} - ${Number(code.horas).toFixed(2)} h` : '-';
+        td.innerHTML = code ? `<span class=\"code-badge\">${code.codigo}</span>` : '<span class=\"muted\">--</span>';
+        renderMonths();
+        renderTotales();
+        close();
+      };
+    }, true);
+
+    tiendasSel.addEventListener('change', cargarDatos);
+    anioSel.addEventListener('change', cargarDatos);
+    cargarBase();
+  </script>
+</body>
+</html>
+
