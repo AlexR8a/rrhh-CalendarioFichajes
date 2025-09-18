@@ -11,33 +11,173 @@ function weekDates(a){const r=[];const s=new Date(`${a}T00:00:00`);for(let i=0;i
 async function upsertReq({id_turno,fecha,cantidad}){const e=await db('RequerimientosTurno').where({id_turno,fecha}).first();if(e){await db('RequerimientosTurno').where({id_turno,fecha}).update({cantidad})}else{await db('RequerimientosTurno').insert({id_turno,fecha,cantidad})}}
 async function ensureAsig({id_trabajador,id_turno,fecha,asignado_por=null}){const e=await db('AsignacionesTurno').where({id_trabajador,id_turno,fecha}).first();if(e)return e.id_asignacion||e.id||e.ID;const [id]=await db('AsignacionesTurno').insert({id_trabajador,id_turno,fecha,asignado_por});return id}
 async function ensureFichaje({id_trabajador,fecha,hora_entrada=null,hora_salida=null,fuente='fichaje'}){const e=await db('Fichajes').where({id_trabajador,fecha}).first();if(e){const p={};if(hora_entrada&&!e.hora_entrada)p.hora_entrada=hora_entrada;if(hora_salida&&!e.hora_salida)p.hora_salida=hora_salida;if(Object.keys(p).length)await db('Fichajes').where({id_fichaje:e.id_fichaje}).update(p);return e.id_fichaje||e.id||e.ID}const [id]=await db('Fichajes').insert({id_trabajador,fecha,hora_entrada,hora_salida,fuente});return id}
+
+// Añade este helper arriba, junto al resto de helpers
+function randInt(min, max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+// ====== REEMPLAZA TODO TU main() POR ESTO ======
 async function main(){try{
-  const tN=await ensureStore({nombre:'Tienda Norte',direccion:'Calle Norte 1'});const tS=await ensureStore({nombre:'Tienda Sur',direccion:'Avenida Sur 2'});
-  const idTN=tN.id_tienda||tN.ID||tN.id;const idTS=tS.id_tienda||tS.ID||tS.id;
-  const a1=await upsertUser({nombre:'Admin Uno',email:'admin1@example.com',password:'Admin1234',rol:'administrador'});
-  await upsertUser({nombre:'Admin Dos',email:'admin2@example.com',password:'Admin1234',rol:'administrador'});
-  const j1=await upsertUser({nombre:'Jefe Norte',email:'jefe1@example.com',password:'Jefe1234',rol:'jefe'});
-  const j2=await upsertUser({nombre:'Jefe Sur',email:'jefe2@example.com',password:'Jefe1234',rol:'jefe'});
-  await setStoreManager(idTN,j1.id_usuario);await setStoreManager(idTS,j2.id_usuario);
-  const w1=await upsertUser({nombre:'Trabajador Norte',email:'trab1@example.com',password:null,rol:'trabajador'});
-  const w2=await upsertUser({nombre:'Trabajador Sur',email:'trab2@example.com',password:null,rol:'trabajador'});
-  await ensureWorkerInStore(w1.id_usuario,idTN);await ensureWorkerInStore(w2.id_usuario,idTS);
-  const tipoCaja=await ensureTipoTurno('Caja');const tipoRepo=await ensureTipoTurno('Reposici\u00f3n');
-  const tNM=await ensureTurno({id_tienda:idTN,id_tipo_turno:tipoCaja,hora_inicio:'09:00',hora_fin:'13:00'});
-  const tNT=await ensureTurno({id_tienda:idTN,id_tipo_turno:tipoRepo,hora_inicio:'16:00',hora_fin:'20:00'});
-  const tSM=await ensureTurno({id_tienda:idTS,id_tipo_turno:tipoCaja,hora_inicio:'10:00',hora_fin:'14:00'});
-  const tST=await ensureTurno({id_tienda:idTS,id_tipo_turno:tipoRepo,hora_inicio:'15:00',hora_fin:'19:00'});
-  const hoy=new Date().toISOString().slice(0,10);const lunes=mondayOfWeek(hoy);const fechas=weekDates(lunes);
-  for(const f of fechas){await upsertReq({id_turno:tNM,fecha:f,cantidad:1});await upsertReq({id_turno:tNT,fecha:f,cantidad:1});await upsertReq({id_turno:tSM,fecha:f,cantidad:1});await upsertReq({id_turno:tST,fecha:f,cantidad:2});}
-  await ensureAsig({id_trabajador:w1.id_usuario,id_turno:tNM,fecha:fechas[0],asignado_por:j1.id_usuario});
-  await ensureAsig({id_trabajador:w1.id_usuario,id_turno:tNM,fecha:fechas[2],asignado_por:j1.id_usuario});
-  await ensureAsig({id_trabajador:w2.id_usuario,id_turno:tSM,fecha:fechas[1],asignado_por:j2.id_usuario});
-  await ensureAsig({id_trabajador:w2.id_usuario,id_turno:tSM,fecha:fechas[3],asignado_por:j2.id_usuario});
-  const ayer=new Date(`${hoy}T00:00:00`);ayer.setDate(ayer.getDate()-1);const antier=new Date(`${hoy}T00:00:00`);antier.setDate(antier.getDate()-2);const fAy=ayer.toISOString().slice(0,10);const fAn=antier.toISOString().slice(0,10);
-  await ensureFichaje({id_trabajador:w1.id_usuario,fecha:fAn,hora_entrada:'09:05:00',hora_salida:'13:02:00'});
-  await ensureFichaje({id_trabajador:w1.id_usuario,fecha:fAy,hora_entrada:'16:02:00',hora_salida:'19:58:00'});
-  await ensureFichaje({id_trabajador:w2.id_usuario,fecha:fAn,hora_entrada:'10:10:00',hora_salida:'13:55:00'});
-  await ensureFichaje({id_trabajador:w2.id_usuario,fecha:fAy,hora_entrada:'15:00:00',hora_salida:'19:00:00'});
-  console.log('Seed OK. Ejemplos:',{tiendaNorte:idTN,tiendaSur:idTS,admin:a1.id_usuario,turnoNorteManana:tNM});
-}catch(err){console.error('Error seed:',err);process.exitCode=1}finally{await db.destroy()}}
+  // ---- 1) Crear TIENDAS ----
+  const tiendasSeed = [
+    { nombre:'Tienda Norte',  direccion:'Calle Norte 1' },
+    { nombre:'Tienda Sur',    direccion:'Avenida Sur 2' },
+    { nombre:'Tienda Centro', direccion:'Plaza Mayor 3' },
+    { nombre:'Tienda Este',   direccion:'Ronda del Este 4' },
+  ];
+  const tiendas = [];
+  for(const t of tiendasSeed){
+    const ti = await ensureStore(t);
+    tiendas.push({ ...ti, id_tienda: ti.id_tienda||ti.ID||ti.id, nombre: t.nombre });
+  }
+
+  // ---- 2) Crear ADMINS (se mantienen 2) ----
+  const admin1 = await upsertUser({nombre:'Admin Uno', email:'admin1@example.com', password:'Admin1234', rol:'administrador'});
+  await upsertUser({nombre:'Admin Dos', email:'admin2@example.com', password:'Admin1234', rol:'administrador'});
+
+  // ---- 3) Crear JEFES (uno por tienda) + asignarlos ----
+  const jefes = [];
+  for(const t of tiendas){
+    const email = `jefe.${t.nombre.toLowerCase().split(' ').join('') }@example.com`;
+    const jefe  = await upsertUser({ nombre:`Jefe ${t.nombre.split(' ')[1]||t.nombre}`, email, password:'Jefe1234', rol:'jefe' });
+    await setStoreManager(t.id_tienda, jefe.id_usuario);
+    jefes.push({ tienda: t, jefe });
+  }
+
+  // ---- 4) Crear TRABAJADORES por tienda ----
+  // Cambia el número para crear más o menos por tienda
+  const trabajadoresPorTienda = 5; // p.ej. 5 trabajadores por tienda
+  const trabajadores = []; // {id_usuario, id_tienda}
+  for(const t of tiendas){
+    for(let i=1;i<=trabajadoresPorTienda;i++){
+      const nombre = `Trabajador ${t.nombre.split(' ')[1]||t.nombre} ${i}`;
+      const email  = `trab.${t.nombre.toLowerCase().split(' ').join('')}.${i}@example.com`;
+      const w = await upsertUser({ nombre, email, password:null, rol:'trabajador' });
+      await ensureWorkerInStore(w.id_usuario, t.id_tienda);
+      trabajadores.push({ id_usuario:w.id_usuario, id_tienda:t.id_tienda, nombre, tienda:t.nombre });
+    }
+  }
+
+  // ---- 5) Tipos de turno (más variados) ----
+  const tipoCaja   = await ensureTipoTurno('Caja');
+  const tipoRepo   = await ensureTipoTurno('Reposición');
+  const tipoLimp   = await ensureTipoTurno('Limpieza');
+  const tipoOnline = await ensureTipoTurno('Online');
+
+  // Plantillas de horarios por tipo (no cruzamos medianoche)
+  // Ajusta/añade los que quieras
+  const plantillas = [
+    { tipo: tipoCaja,   etiqueta:'Caja Mañana',    hora_inicio:'09:00', hora_fin:'13:00' },
+    { tipo: tipoCaja,   etiqueta:'Caja Mediodía',  hora_inicio:'10:00', hora_fin:'14:00' },
+    { tipo: tipoRepo,   etiqueta:'Repo Tarde',     hora_inicio:'15:00', hora_fin:'19:00' },
+    { tipo: tipoLimp,   etiqueta:'Limpieza Tarde', hora_inicio:'18:00', hora_fin:'22:00' },
+    { tipo: tipoOnline, etiqueta:'Online Mañana',  hora_inicio:'08:00', hora_fin:'12:00' },
+  ];
+
+  // ---- 6) Crear TURNOS por cada tienda siguiendo las plantillas ----
+  // Guardamos ids de turnos por tienda y etiqueta para asignaciones posteriores
+  const turnosPorTienda = new Map(); // key id_tienda -> array de {id_turno, tipo, etiqueta}
+  for(const t of tiendas){
+    const arr = [];
+    for(const pl of plantillas){
+      const id_turno = await ensureTurno({
+        id_tienda: t.id_tienda,
+        id_tipo_turno: pl.tipo,
+        hora_inicio: pl.hora_inicio,
+        hora_fin: pl.hora_fin,
+      });
+      arr.push({ id_turno, tipo: pl.tipo, etiqueta: pl.etiqueta });
+    }
+    turnosPorTienda.set(t.id_tienda, arr);
+  }
+
+  // ---- 7) Requerimientos de la SEMANA actual para TODOS los turnos ----
+  const hoy   = new Date().toISOString().slice(0,10);
+  const lunes = mondayOfWeek(hoy);
+  const fechas = weekDates(lunes); // 7 días
+
+  // Cantidades por tipo "aproximadas"
+  const cantidadPorTipo = new Map([
+    [tipoCaja,   2],
+    [tipoRepo,   2],
+    [tipoLimp,   1],
+    [tipoOnline, 1],
+  ]);
+
+  for(const t of tiendas){
+    const turnos = turnosPorTienda.get(t.id_tienda);
+    for(const tr of turnos){
+      for(const f of fechas){
+        const cant = cantidadPorTipo.get(tr.tipo) ?? 1;
+        await upsertReq({ id_turno: tr.id_turno, fecha: f, cantidad: cant });
+      }
+    }
+  }
+
+  // ---- 8) Asignaciones de ejemplo (Lu-Vi) haciendo un reparto round-robin de trabajadores en su tienda ----
+  // Para cada tienda: recorrer trabajadores y asignarlos a turnos distintos durante la semana
+  for(const t of tiendas){
+    const jefe = jefes.find(j=>j.tienda.id_tienda===t.id_tienda)?.jefe;
+    const workers = trabajadores.filter(w=>w.id_tienda===t.id_tienda);
+    const turnos  = turnosPorTienda.get(t.id_tienda);
+
+    // Usamos días laborables (Lu-Vi) -> fechas[0..4]
+    for(let di=0; di<5; di++){
+      const fecha = fechas[di];
+      // Para cada turno del día, asignamos a uno o dos trabajadores si hay
+      for(const tr of turnos){
+        // número de personas a cubrir aproximado (como requerimientos)
+        const cupo = cantidadPorTipo.get(tr.tipo) ?? 1;
+        for(let k=0;k<cupo;k++){
+          const w = workers[(di + k) % workers.length];
+          await ensureAsig({
+            id_trabajador: w.id_usuario,
+            id_turno: tr.id_turno,
+            fecha,
+            asignado_por: jefe?.id_usuario ?? admin1.id_usuario
+          });
+        }
+      }
+    }
+  }
+
+  // ---- 9) FICHAJES de los 2 días anteriores para algunos trabajadores al azar ----
+  const ayer    = new Date(`${hoy}T00:00:00`); ayer.setDate(ayer.getDate()-1);
+  const antier  = new Date(`${hoy}T00:00:00`); antier.setDate(antier.getDate()-2);
+  const fAy = ayer.toISOString().slice(0,10);
+  const fAn = antier.toISOString().slice(0,10);
+
+  // Cogemos 2 trabajadores por tienda y les generamos fichajes en un turno "Caja Mañana" si existe
+  for(const t of tiendas){
+    const workers = trabajadores.filter(w=>w.id_tienda===t.id_tienda).slice(0,2);
+    const turnoCajaMan = turnosPorTienda.get(t.id_tienda).find(x=>x.etiqueta.includes('Caja'));
+    if(!turnoCajaMan) continue;
+    // Dos días, con ligeras variaciones de minutos
+    for(const w of workers){
+      const ent1 = `09:${String(randInt(0,9)).padStart(2,'0')}:00`;
+      const sal1 = `13:${String(randInt(0,9)).padStart(2,'0')}:00`;
+      const ent2 = `10:${String(randInt(0,9)).padStart(2,'0')}:00`;
+      const sal2 = `14:${String(randInt(0,9)).padStart(2,'0')}:00`;
+      await ensureFichaje({ id_trabajador:w.id_usuario, fecha:fAn, hora_entrada:ent1, hora_salida:sal1 });
+      await ensureFichaje({ id_trabajador:w.id_usuario, fecha:fAy, hora_entrada:ent2, hora_salida:sal2 });
+    }
+  }
+
+  // ---- 10) LOG resumen ----
+  console.log('Seed OK (extendida). Resumen:',{
+    tiendas: tiendas.map(t=>({id_tienda:t.id_tienda, nombre:t.nombre})),
+    totalTrabajadores: trabajadores.length,
+    admins: [admin1.id_usuario],
+    tiposTurno: ['Caja','Reposición','Limpieza','Online'],
+    ejemplo: {
+      cualquierTienda: tiendas[0]?.id_tienda,
+      cualquierTrabajador: trabajadores[0]?.id_usuario
+    }
+  });
+
+}catch(err){
+  console.error('Error seed extendida:', err);
+  process.exitCode = 1;
+}finally{
+  await db.destroy();
+}}
 main();

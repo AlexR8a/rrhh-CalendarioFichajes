@@ -2,9 +2,20 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Fichajes - RRHH</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fichajes</title>
   <link rel="stylesheet" href="styles.css" />
+  <!-- Leaflet (mapa) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <style>
+    .center { display:flex; align-items:center; justify-content:center; }
+    #map { width: 100%; height: 360px; border-radius: 12px; border:1px solid var(--border); }
+    .big-btn { font-size: 18px; padding: 14px 18px; border-radius: 12px; }
+    .log-wrap { margin-top: 16px; }
+    .muted-small { font-size:12px; color: var(--muted); }
+    .icon { font-size: 22px; margin-right: 8px; }
+  </style>
 </head>
 <body>
   <header>
@@ -13,13 +24,14 @@
         <div class="logo" aria-hidden="true"></div>
         <div>RRHH App</div>
       </a>
-      <nav class="navlinks" aria-label="NavegaciÃ³n principal">
+      <nav class="navlinks" aria-label="Navegación principal">
         <a href="ver-usuarios.html">Usuarios</a>
         <a href="ver-tiendas.html">Tiendas</a>
         <a href="asignar-turnos.html">Turnos</a>
         <a href="calendario-usuario.html">Mi calendario</a>
         <a href="fichajes.html">Fichajes</a>
         <a href="crear-turno.html">Crear turno</a>
+        <a href="HorariosSemana.html">Semana · Horarios</a>
       </nav>
       <button class="btn btn-outline" id="btnTheme" title="Cambiar tema"></button>
       <div class="user" id="userBox">
@@ -32,197 +44,223 @@
 
   <main class="container">
     <section class="hero">
-      <h1 class="title">Fichajes semanales</h1>
-      <p class="subtitle">Vista similar a la hoja semanal del Excel, con ediciÃ³n sencilla y totales.</p>
+      <h1 class="title">Fichajes</h1>
+      <p class="subtitle">Pulsa el botón para registrar tu posición con fecha y hora. Se mostrará un mapa con tu ubicación.</p>
     </section>
 
-    <div class="card" style="margin-bottom:16px;">
-      <label for="selectTienda">Tienda</label>
-      <div class="row" style="grid-template-columns: 1fr auto auto auto; gap: 10px; align-items: end;">
-        <select id="selectTienda"></select>
-        <button id="btnSemanaAnt" class="btn btn-secondary">Semana anterior</button>
-        <button id="btnSemanaSig" class="btn">Semana siguiente</button>
-        <a id="btnExport" class="btn btn-outline" href="#" download>Exportar CSV</a>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="center">
+        <button id="btnFichar" class="btn big-btn">
+          <span class="icon">📍</span>
+          Fichar ahora
+        </button>
       </div>
+      <div id="status" class="status muted-small" style="text-align:center; margin-top:10px;"></div>
     </div>
 
-    <div class="card table-wrap">
-      <table id="tablaFichajes">
-        <thead id="thead"></thead>
-        <tbody id="tbody"></tbody>
-      </table>
+    <div class="grid">
+      <div class="col-6">
+        <div class="card">
+          <h2>Mapa (ubicación actual)</h2>
+          <div id="map"></div>
+          <div id="locationInfo" class="muted-small" style="margin-top:8px;"></div>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="card log-wrap">
+          <h2>Registro local</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Hora</th>
+                  <th>Usuario</th>
+                  <th>Lat</th>
+                  <th>Lng</th>
+                  <th>±m</th>
+                </tr>
+              </thead>
+              <tbody id="logBody"></tbody>
+            </table>
+          </div>
+          <div class="muted-small" style="margin-top:6px;">
+            Los fichajes se guardan también en tu navegador (localStorage) para consulta rápida.
+          </div>
+        </div>
+      </div>
     </div>
   </main>
 
   <footer>
     <div class="container foot">
-      <div>Â© <span id="y"></span> RRHH App Â· GestiÃ³n interna</div>
-      <div>
-        <a href="login.html">Iniciar sesiÃ³n</a>
-        Â·
-        <a href="#" id="goTop">Ir arriba</a>
-      </div>
+      <div>© <span id="y"></span> RRHH App · Gestión interna</div>
+      <div><a href="#" id="goTop">Ir arriba</a></div>
     </div>
   </footer>
 
-  <script src="app.js"></script>
   <script>
+    /* ===== Utilidades comunes / auth ===== */
     const API = 'http://localhost:3000/api';
-    let semanaInicio = new Date();
-    semanaInicio.setHours(0,0,0,0);
-    const dow = semanaInicio.getDay();
-    semanaInicio.setDate(semanaInicio.getDate() - ((dow + 6) % 7));
-    let fechasSemana = [];
-    let trabajadores = [];
-    let fichajes = [];
+    function getToken(){ try { return localStorage.getItem('token') || ''; } catch { return ''; } }
+    function authHeaders(){ const h={'Content-Type':'application/json'}; const t=getToken(); if(t) h['Authorization'] = `Bearer ${t}`; return h; }
 
-    function authHeaders(){
-      const h = { 'Content-Type': 'application/json' };
-      const t = localStorage.getItem('token');
-      if (t) h['Authorization'] = `Bearer ${t}`;
-      return h;
+    function decodeUser(){
+      try{ const r = localStorage.getItem('user'); if (r) return JSON.parse(r); }catch{}
+      try{
+        const t = getToken(); if (!t || !t.includes('.')) return null;
+        const b = t.split('.')[0].replace(/-/g,'+').replace(/_/g,'/');
+        const pad = b.length % 4 === 2 ? '==' : b.length % 4 === 3 ? '=' : b.length % 4 === 1 ? '===' : '';
+        return JSON.parse(atob(b+pad));
+      }catch{ return null; }
     }
-    function fISO(date) { return date.toISOString().slice(0,10); }
+    function uidOf(u){ const n = Number(u?.uid || u?.id_usuario || u?.id || u?.ID); return Number.isFinite(n)?n:null; }
 
-    function decodePayload() {
-      try {
-        const raw = localStorage.getItem('token');
-        if (!raw || !raw.includes('.')) return null;
-        const body = atob(raw.split('.')[0].replace(/-/g,'+').replace(/_/g,'/'));
-        return JSON.parse(body);
-      } catch { return null; }
-    }
+    function showStatus(msg, ok=true){ const s=document.getElementById('status'); s.textContent = msg||''; s.className = 'status muted-small ' + (ok?'ok':'err'); }
 
-    async function cargarTiendas() {
-      const res = await fetch(`${API}/tiendas`);
-      const tiendas = await res.json();
-      const me = decodePayload();
-      const sel = document.getElementById('selectTienda');
-      sel.innerHTML = '';
-      tiendas.forEach(t => {
-        const opt = document.createElement('option');
-        opt.value = t.id_tienda; opt.textContent = t.nombre; sel.appendChild(opt);
-      });
-      if (me && me.rol === 'jefe') {
-        const mine = tiendas.find(t => Number(t.id_jefe) === Number(me.uid));
-        if (mine) { sel.value = String(mine.id_tienda); sel.disabled = true; }
-        else { alert('No tienes tienda asignada. Contacta con administraciÃ³n.'); }
-      }
-      cargarSemana();
-    }
+    // Fecha/hora locales legibles
+    function fmtDate(ts){ const d=new Date(ts); return d.toLocaleDateString(); }
+    function fmtTime(ts){ const d=new Date(ts); return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}); }
 
-    async function cargarSemana(){
-      const tienda = document.getElementById('selectTienda').value;
-      const desde = fISO(semanaInicio);
-      fechasSemana = [];
-      for (let i = 0; i < 7; i++) { const d = new Date(semanaInicio); d.setDate(semanaInicio.getDate()+i); fechasSemana.push(fISO(d)); }
-      const url = `${API}/fichajes/semana?tienda=${encodeURIComponent(tienda)}&desde=${desde}`;
-      const res = await fetch(url, { headers: authHeaders() });
-      const json = await res.json();
-      trabajadores = json.trabajadores || [];
-      fichajes = json.fichajes || [];
-      renderTabla();
-      const exp = document.getElementById('btnExport');
-      exp.href = `${API}/fichajes/semana.csv?tienda=${encodeURIComponent(tienda)}&desde=${desde}`;
-    }
+    /* ===== Estado ===== */
+    const state = {
+      me: null,
+      map: null,
+      marker: null,
+      log: [], // {ts, usuario, lat, lng, acc}
+    };
 
-    function toMin(hhmmss){ if (!hhmmss) return null; const [hh, mm] = String(hhmmss).split(':'); const h=Number(hh), m=Number(mm); if(Number.isNaN(h)||Number.isNaN(m)) return null; return h*60+m; }
-    function difMin(a,b){ const am=toMin(a), bm=toMin(b); if(am==null||bm==null) return 0; const d=bm-am; return d>0?d:0; }
-    function fmtMin(min){ const h=Math.floor(min/60), m=min%60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; }
+    /* ===== Inicialización ===== */
+    const ySpan = document.getElementById('y'); ySpan.textContent = new Date().getFullYear();
 
-    function renderTabla(){
-      // thead
-      const thead = document.getElementById('thead');
-      let h = '<tr><th>Empleado</th>';
-      fechasSemana.forEach(f => {
-        const [yy, mm, dd] = f.split('-').map(Number);
-        const d = new Date(yy, (mm||1)-1, dd||1);
-        h += `<th>${d.toLocaleDateString('es-ES', { weekday:'short', day:'numeric' })}</th>`;
-      });
-      h += '<th>Total semana</th></tr>';
-      thead.innerHTML = h;
-
-      // tbody
-      const tbody = document.getElementById('tbody');
-      tbody.innerHTML = '';
-      trabajadores.forEach(t => {
-        let total = 0;
-        let row = `<tr><td>${t.nombre}</td>`;
-        fechasSemana.forEach(fecha => {
-          const f = fichajes.find(x => x.id_trabajador === t.id_trabajador && x.fecha === fecha);
-          const entrada = f?.hora_entrada || '';
-          const salida = f?.hora_salida || '';
-          total += difMin(entrada, salida);
-          row += `<td data-trab="${t.id_trabajador}" data-fecha="${fecha}">
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <span class="muted">${entrada && salida ? fmtMin(difMin(entrada, salida)) : ''}</span>
-              <span>${entrada ? entrada.slice(0,5) : '--:--'} - ${salida ? salida.slice(0,5) : '--:--'}</span>
-              <button class="btn btn-secondary btnEdit" style="padding:4px 8px; font-size:12px;">Editar</button>
-            </div>
-          </td>`;
-        });
-        row += `<td>${fmtMin(total)}</td></tr>`;
-        tbody.innerHTML += row;
-      });
-
-      bindEditors();
-    }
-
-    function bindEditors(){
-      document.querySelectorAll('.btnEdit').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const td = btn.closest('td');
-          if (!td) return;
-          const current = td.querySelector('span:nth-child(2)')?.textContent || '';
-          const [a,b] = current.split('-').map(s => s.trim());
-          td.innerHTML = `<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-            <label>Entrada <input type="time" class="inpE" value="${a && a !== '--:--' ? a : ''}"></label>
-            <label>Salida <input type="time" class="inpS" value="${b && b !== '--:--' ? b : ''}"></label>
-            <button class="btn btn-secondary btnCancel" style="padding:4px 8px; font-size:12px;">Cancelar</button>
-            <button class="btn btn-danger btnClear" style="padding:4px 8px; font-size:12px;">Borrar</button>
-            <button class="btn btnEditSave" style="padding:4px 8px; font-size:12px;">Guardar</button>
-          </div>`;
-          attachEditHandlers(td);
-        });
-      });
-    }
-
-    function attachEditHandlers(td){
-      const trabajador = parseInt(td.getAttribute('data-trab'), 10);
-      const fecha = td.getAttribute('data-fecha');
-      td.querySelector('.btnCancel').onclick = () => cargarSemana();
-      td.querySelector('.btnClear').onclick = async () => { await guardarFichaje(trabajador, fecha, '', ''); };
-      td.querySelector('.btnEditSave').onclick = async () => {
-        const e = td.querySelector('.inpE')?.value || '';
-        const s = td.querySelector('.inpS')?.value || '';
-        // Validaciones bÃ¡sicas
-        if (e && s) {
-          if (s <= e) { alert('La salida debe ser posterior a la entrada.'); return; }
-        }
-        await guardarFichaje(trabajador, fecha, e, s);
+    function applyThemeInit(){
+      const btnTheme = document.getElementById('btnTheme');
+      const _t = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', _t);
+      btnTheme.textContent = _t==='dark' ? '☾' : '☀';
+      btnTheme.onclick = ()=>{
+        const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+        const next = cur==='dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch {}
+        btnTheme.textContent = next==='dark' ? '☾' : '☀';
       };
     }
 
-    async function guardarFichaje(id_trabajador, fecha, hora_entrada, hora_salida){
-      try {
-        const res = await fetch(`${API}/fichajes/manual`, {
-          method: 'PUT',
-          headers: authHeaders(),
-          body: JSON.stringify({ id_trabajador, fecha, hora_entrada: hora_entrada ? (hora_entrada+':00') : null, hora_salida: hora_salida ? (hora_salida+':00') : null })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Error al guardar');
-        cargarSemana();
-      } catch (err) { alert(err.message); }
+    function init(){
+      applyThemeInit();
+      state.me = decodeUser();
+      if (!state.me) { alert('Inicia sesión'); location.href='login.html'; return; }
+      document.getElementById('userLabel').textContent = state.me?.nombre || `UID ${uidOf(state.me)}` || 'Usuario';
+      loadLocalLog();
+      initMap();
+      bindEvents();
     }
 
-    document.getElementById('selectTienda').onchange = cargarSemana;
-    document.getElementById('btnSemanaAnt').onclick = () => { semanaInicio.setDate(semanaInicio.getDate() - 7); cargarSemana(); };
-    document.getElementById('btnSemanaSig').onclick = () => { semanaInicio.setDate(semanaInicio.getDate() + 7); cargarSemana(); };
+    /* ===== Mapa (Leaflet) ===== */
+    function initMap(){
+      // Posición por defecto si aún no hay GPS
+      state.map = L.map('map');
+      const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+      });
+      tiles.addTo(state.map);
+      state.map.setView([40.4168, -3.7038], 5); // España a vista general
+    }
 
-    cargarTiendas();
+    function updateMap(lat, lng, acc){
+      const pos = [lat, lng];
+      if (!state.marker){
+        state.marker = L.marker(pos).addTo(state.map);
+      } else {
+        state.marker.setLatLng(pos);
+      }
+      const info = `Lat ${lat.toFixed(6)}, Lng ${lng.toFixed(6)} · ±${Math.round(acc)} m`;
+      state.marker.bindPopup(info).openPopup();
+      state.map.setView(pos, 16);
+      document.getElementById('locationInfo').textContent = info;
+    }
+
+    /* ===== Fichaje (Geolocalización) ===== */
+    function bindEvents(){
+      document.getElementById('btnFichar').onclick = doCheckIn;
+      document.getElementById('goTop').onclick = (e)=>{ e.preventDefault(); window.scrollTo({ top:0, behavior:'smooth' }); };
+    }
+
+    function doCheckIn(){
+      if (!('geolocation' in navigator)){
+        showStatus('Este navegador no soporta geolocalización', false);
+        return;
+      }
+      showStatus('Solicitando ubicación...');
+      navigator.geolocation.getCurrentPosition(onGeoSuccess, onGeoError, {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      });
+    }
+
+    function onGeoSuccess(pos){
+      const { latitude:lat, longitude:lng, accuracy:acc } = pos.coords;
+      updateMap(lat, lng, acc);
+
+      const ts = Date.now();
+      const usuario = state.me?.nombre || `UID ${uidOf(state.me)}` || 'Usuario';
+      const entry = { ts, usuario, lat, lng, acc };
+      state.log.unshift(entry);
+      persistLocalLog();
+      renderLog();
+      showStatus('Fichaje registrado');
+
+      // Intento de guardar también en servidor (ajusta endpoint según tu API real)
+      try{
+        fetch(`${API}/fichajes`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({
+            fecha: new Date(ts).toISOString(),
+            lat, lng, precision_m: acc
+          })
+        }).catch(()=>{});
+      } catch {}
+    }
+
+    function onGeoError(err){
+      const code = err?.code;
+      const map = {
+        1: 'Permiso denegado por el usuario',
+        2: 'Posición no disponible',
+        3: 'Tiempo de espera agotado'
+      };
+      showStatus(map[code] || 'No se pudo obtener la ubicación', false);
+    }
+
+    /* ===== Registro local (tabla) ===== */
+    function loadLocalLog(){
+      try{ state.log = JSON.parse(localStorage.getItem('fichajes_log')||'[]'); }catch{ state.log = []; }
+      renderLog();
+    }
+    function persistLocalLog(){
+      try{ localStorage.setItem('fichajes_log', JSON.stringify(state.log.slice(0,2000))); }catch{}
+    }
+    function renderLog(){
+      const tb = document.getElementById('logBody');
+      tb.innerHTML='';
+      for (const e of state.log){
+        const tr = document.createElement('tr');
+        const d = new Date(e.ts);
+        const tds = [fmtDate(e.ts), fmtTime(e.ts), e.usuario, e.lat.toFixed(6), e.lng.toFixed(6), Math.round(e.acc).toString()];
+        for (const v of tds){ const td=document.createElement('td'); td.textContent=v; tr.appendChild(td); }
+        tb.appendChild(tr);
+      }
+      if (!state.log.length){
+        const tr = document.createElement('tr');
+        const td = document.createElement('td'); td.colSpan=6; td.className='muted-small'; td.textContent='Sin datos todavía. Pulsa “Fichar ahora”.'; tr.appendChild(td); tb.appendChild(tr);
+      }
+    }
+
+    init();
   </script>
 </body>
 </html>
-
-
