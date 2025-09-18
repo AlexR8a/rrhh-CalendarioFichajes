@@ -14,6 +14,38 @@ function isEncargadoLike(role) {
   return rol === 'encargado' || rol === 'jefe';
 }
 
+function normalizeId(value) {
+  if (value === undefined || value === null) return null;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const asNumber = Number(trimmed);
+    if (!Number.isNaN(asNumber)) return asNumber;
+    return trimmed;
+  }
+  const converted = Number(value);
+  if (!Number.isNaN(converted)) return converted;
+  return String(value);
+}
+
+function idsEqual(a, b) {
+  if (a === undefined || a === null || b === undefined || b === null) return false;
+  return String(a) === String(b);
+}
+function toISODate(value) {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    return value.length >= 10 ? value.slice(0, 10) : value;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 async function ensureTables() {
   const hasCodes = await db.schema.hasTable('TurnosCodigo');
   if (!hasCodes) {
@@ -143,10 +175,14 @@ router.get('/asignaciones', async (req, res) => {
     const ids = empleados.map((e) => e.id_trabajador);
     let asignaciones = [];
     if (ids.length) {
-      asignaciones = await db('PlanificacionAsignaciones')
+      const rows = await db('PlanificacionAsignaciones')
         .whereIn('id_trabajador', ids)
         .whereRaw('YEAR(fecha) = ?', [anio])
         .select('id_asignacion', 'id_trabajador', 'fecha', 'id_turno_codigo');
+      asignaciones = rows.map((row) => ({
+        ...row,
+        fecha: toISODate(row.fecha)
+      }));
     }
     const codigos = await db('TurnosCodigo').where({ activo: 1 }).orderBy('codigo');
     res.json({ empleados, asignaciones, codigos });
@@ -263,6 +299,153 @@ router.post('/auto/patron-semanal', authenticate, async (req, res) => {
     return router.handle({ ...req, url: '/asignaciones/bulk', method: 'POST' }, res);
   } catch (err) {
     res.status(500).json({ error: 'Error al aplicar patrón semanal' });
+  }
+});
+
+// Planificacion anual individual por trabajador
+router.get(['/usuario', '/usuario/:id'], authenticate, async (req, res) => {
+  try {
+    const anio = parseInt(req.query.anio, 10) || new Date().getFullYear();
+    const currentId = normalizeId(req.user?.uid);
+    const rolRaw = req.user?.rol;
+    const admin = isAdminLike(req);
+    const encargado = isEncargadoLike(rolRaw);
+    if (currentId == null) return res.status(401).json({ error: 'Usuario sin identificador' });
+
+    const paramId = normalizeId(req.params?.id);
+    const targetId = paramId == null ? currentId : paramId;
+    if (targetId == null) return res.status(400).json({ error: 'Trabajador invalido' });
+    if (!idsEqual(targetId, currentId) && !(admin || encargado)) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    const trabajador = await db('Usuarios as U')
+      .leftJoin('Trabajadores as T', 'T.id_trabajador', 'U.id_usuario')
+      .leftJoin('Tiendas as S', 'S.id_tienda', 'T.id_tienda')
+      .where('U.id_usuario', targetId)
+      .first(
+        'U.id_usuario as id_usuario',
+        'U.nombre',
+        'U.email',
+        'U.rol',
+        'T.id_trabajador',
+        'T.id_tienda',
+        'S.nombre as tienda_nombre',
+        'S.id_jefe'
+      );
+    if (!trabajador) return res.status(404).json({ error: 'Trabajador no encontrado' });
+
+    let workerId = normalizeId(trabajador.id_trabajador);
+    if (workerId == null) workerId = normalizeId(trabajador.id_usuario);
+    if (workerId == null) return res.status(404).json({ error: 'Trabajador no encontrado' });
+
+    if (encargado && !admin && !idsEqual(workerId, currentId)) {
+      const jefeId = normalizeId(trabajador.id_jefe);
+      if (!idsEqual(jefeId, currentId)) {
+        return res.status(403).json({ error: 'No autorizado' });
+      }
+    }
+
+    const asignacionesRaw = await db('PlanificacionAsignaciones as P')
+      .leftJoin('TurnosCodigo as C', 'C.id_turno_codigo', 'P.id_turno_codigo')
+      .where('P.id_trabajador', workerId)
+      .whereRaw('YEAR(P.fecha) = ?', [anio])
+      .orderBy('P.fecha')
+      .select(
+        'P.fecha',
+        'P.id_turno_codigo',
+        'C.codigo',
+        'C.descripcion',
+        db.raw('COALESCE(C.horas, 0) as horas')
+      );
+
+    const asignaciones = asignacionesRaw.map((row) => ({
+      fecha: toISODate(row.fecha),
+      id_turno_codigo: row.id_turno_codigo || null,
+      codigo: row.codigo || null,
+      descripcion: row.descripcion || '',
+      horas: Number(row.horas || 0)
+    }));
+
+    const resumen = {
+      totalHoras: 0,
+      meses: {},
+      semanas: {}
+    };
+    const codigosUsados = new Map();
+    const toDate = (iso) => {
+      const d = new Date(iso + 'T00:00:00');
+      if (Number.isNaN(d.getTime())) return null;
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
+    const mondayKey = (iso) => {
+      const d = toDate(iso);
+      if (!d) return null;
+      const offset = (d.getDay() + 6) % 7;
+      d.setDate(d.getDate() - offset);
+      return d.toISOString().slice(0, 10);
+    };
+    for (const row of asignaciones) {
+      if (!row || !row.fecha) continue;
+      const horas = Number(row.horas || 0);
+      const mes = row.fecha.slice(5, 7);
+      if (!resumen.meses[mes]) resumen.meses[mes] = { horas: 0, dias: 0 };
+      resumen.meses[mes].horas += horas;
+      if (row.id_turno_codigo) resumen.meses[mes].dias += 1;
+      resumen.totalHoras += horas;
+      const key = mondayKey(row.fecha);
+      if (key) {
+        if (!resumen.semanas[key]) {
+          const start = toDate(key);
+          const end = start ? new Date(start) : null;
+          if (end) end.setDate(end.getDate() + 6);
+          resumen.semanas[key] = {
+            desde: key,
+            hasta: end ? end.toISOString().slice(0, 10) : null,
+            horas: 0,
+            dias: 0
+          };
+        }
+        resumen.semanas[key].horas += horas;
+        if (row.id_turno_codigo) resumen.semanas[key].dias += 1;
+      }
+      if (row.id_turno_codigo && row.codigo) {
+        if (!codigosUsados.has(row.id_turno_codigo)) {
+          codigosUsados.set(row.id_turno_codigo, {
+            id_turno_codigo: row.id_turno_codigo,
+            codigo: row.codigo,
+            descripcion: row.descripcion || '',
+            horas
+          });
+        }
+      }
+    }
+
+    const rawCodigos = await db('TurnosCodigo').where({ activo: 1 }).orderBy('codigo');
+    const codigos = rawCodigos.map((c) => ({ ...c, horas: Number(c.horas || 0) }));
+    const usuarioId = normalizeId(trabajador.id_usuario);
+    const tiendaId = normalizeId(trabajador.id_tienda);
+
+    res.json({
+      anio,
+      trabajador: {
+        id_trabajador: workerId,
+        id_usuario: usuarioId,
+        nombre: trabajador.nombre,
+        email: trabajador.email,
+        rol: trabajador.rol || null,
+        id_tienda: tiendaId,
+        tienda: trabajador.tienda_nombre || null
+      },
+      asignaciones,
+      resumen,
+      codigos,
+      codigosUsados: Array.from(codigosUsados.values())
+    });
+  } catch (err) {
+    console.error('[planificacion] /usuario error', err);
+    res.status(500).json({ error: 'Error al obtener planificacion del trabajador' });
   }
 });
 

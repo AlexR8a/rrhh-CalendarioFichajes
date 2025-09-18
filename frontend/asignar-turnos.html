@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -85,6 +85,7 @@
         <a href="ver-usuarios.html">Usuarios</a>
         <a href="ver-tiendas.html">Tiendas</a>
         <a href="asignar-turnos.html">Turnos</a>
+        <a href="calendario-usuario.html">Mi calendario</a>
         <a href="fichajes.html">Fichajes</a>
       </nav>
       <button class="btn btn-outline" id="btnTheme" title="Cambiar tema"></button>
@@ -294,7 +295,7 @@
         for (const r of sels){
           for (let i=0;i<7;i++){
             const fecha = W.days[i]; const id_trabajador = r.emp.id_trabajador; const val = r.sels[i].value || '';
-            if (r.sels[i].disabled) continue; // no guardar fuera del mes/año
+            if (r.sels[i].disabled) continue; // no guardar fuera del mes/aÃ±o
             const y = parseInt(fecha.slice(0,4),10); if (y !== state.year) continue; // seguridad
             const key = `${id_trabajador}|${fecha}`; const cur = state.asigMap.get(key)||null; const next = val?parseInt(val,10):null;
             if (cur !== next){ items.push({ id_trabajador, fecha, id_turno_codigo: next }); }
@@ -319,3 +320,4 @@
   </script>
 </body>
 </html>
+

@@ -1,0 +1,786 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mi calendario</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .months { display: grid; gap: 12px; margin-top: 16px; }
+    .month { border: 1px solid var(--border); border-radius: 12px; background: var(--bg-soft); overflow: hidden; }
+    .month > .head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; cursor: pointer; }
+    .month > .head h3 { margin: 0; font-size: 16px; font-weight: 800; }
+    .month > .body { display: none; padding: 12px 16px 20px; }
+    .month.expanded > .body { display: block; }
+    .week { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; background: rgba(255,255,255,0.02); }
+    .week:last-child { margin-bottom: 0; }
+    .week .w-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.04); }
+    .week .w-title { font-weight: 700; font-size: 14px; }
+    .week table { width: 100%; border-collapse: collapse; text-align: center; }
+    .week th, .week td { padding: 10px 6px; border-bottom: 1px solid var(--border); }
+    .week th { font-size: 12px; color: var(--muted); font-weight: 700; }
+    .week td { font-size: 13px; }
+    .week tbody tr:last-child td { border-bottom: none; }
+    .day-cell { display: flex; flex-direction: column; gap: 4px; align-items: center; justify-content: center; min-height: 54px; }
+    .day-cell .code { font-weight: 700; }
+    .day-cell .hours { font-size: 12px; color: var(--muted); }
+    .day-cell .empty { color: var(--muted); font-size: 12px; }
+    .off-month { opacity: 0.35; }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .code-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; font-weight: 700; font-size: 12px; }
+    .code-badge span { font-weight: 400; color: var(--muted); }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 12px; }
+    .summary-item { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: rgba(255,255,255,0.02); }
+    .summary-item .label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .summary-item .value { font-size: 18px; font-weight: 700; }
+    .info-line { font-size: 15px; font-weight: 600; }
+    .muted-small { font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <a class="brand" href="index.html" aria-label="Inicio">
+        <div class="logo" aria-hidden="true"></div>
+        <div>RRHH App</div>
+      </a>
+      <nav class="navlinks" aria-label="Navegacion principal">
+        <a href="ver-usuarios.html">Usuarios</a>
+        <a href="ver-tiendas.html">Tiendas</a>
+        <a href="asignar-turnos.html">Planificacion</a>
+        <a href="calendario-usuario.html">Mi calendario</a>
+        <a href="fichajes.html">Fichajes</a>
+      </nav>
+      <button class="btn btn-outline" id="btnTheme" title="Cambiar tema"></button>
+      <div class="user" id="userBox">
+        <span id="userLabel">No autenticado</span>
+        <a class="btn btn-outline" href="login.html" id="btnLogin">Entrar</a>
+        <button class="btn" id="btnLogout" style="display:none">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1 class="title">Mi calendario anual</h1>
+      <p class="subtitle">Consulta tus turnos y las horas totales por semana y mes.</p>
+    </section>
+
+    <div class="card" style="margin-bottom: 14px;">
+      <div class="row" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); align-items: end;">
+        <div class="field">
+          <label for="selYear">Anio</label>
+          <select id="selYear"></select>
+        </div>
+        <div class="field" id="fieldStore" style="display:none;">
+          <label for="selStore">Centro de trabajo</label>
+          <select id="selStore"></select>
+        </div>
+        <div class="field" id="fieldWorker" style="display:none;">
+          <label for="selWorker">Seleccionar trabajador</label>
+          <select id="selWorker"></select>
+        </div>
+        <div class="field">
+          <label>Horas anuales</label>
+          <div class="info-line" id="workerHours">0h</div>
+          <span class="muted-small" id="workerDays"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="summaryCard" style="margin-bottom: 14px;">
+      <h2>Resumen mensual</h2>
+      <div class="summary-grid" id="summaryMonths"></div>
+    </div>
+
+    <div class="card" id="legendCard" style="margin-bottom: 14px;">
+      <h2>Codigos de turno</h2>
+      <div class="legend" id="legendCodes"></div>
+    </div>
+
+    <div class="months" id="months"></div>
+    <div id="status" class="status"></div>
+  </main>
+
+  <footer>
+    <div class="container foot">
+      <div>&copy; <span id="y"></span> RRHH App &middot; Gestion interna</div>
+      <div>
+        <a href="login.html">Iniciar sesion</a>
+        &middot;
+        <a href="#" id="goTop">Ir arriba</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>    const API = 'http://localhost:3000/api';
+    const PLAN = API + '/planificacion';
+    const searchParams = new URLSearchParams(window.location.search);
+    const initialYear = Number.parseInt(searchParams.get('anio') || '', 10);
+    const initialWorkerParam = searchParams.get('trabajador');
+    const initialStoreParam = searchParams.get('tienda');
+
+    function normalizeSelectValue(value) {
+      if (value === undefined || value === null) return null;
+      const str = String(value).trim();
+      return str ? str : null;
+    }
+
+    function decodeUser() {
+      try {
+        const raw = localStorage.getItem('user');
+        return raw ? JSON.parse(raw) : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function resolveUserId(user) {
+      if (!user) return null;
+      const candidates = [user.id_trabajador, user.id_usuario, user.uid, user.id, user.ID];
+      for (const value of candidates) {
+        if (value === undefined || value === null) continue;
+        const num = Number(value);
+        if (Number.isFinite(num)) return String(num);
+        const str = String(value).trim();
+        if (str) return str;
+      }
+      return null;
+    }
+
+    function roleKey(rol) {
+      return String(rol || '').toLowerCase();
+    }
+
+    function updateQueryParam(key, value) {
+      const url = new URL(window.location.href);
+      if (value === null || value === undefined || value === '') {
+        url.searchParams.delete(key);
+      } else {
+        url.searchParams.set(key, value);
+      }
+      window.history.replaceState({}, '', url.toString());
+    }
+
+    const state = {
+      year: Number.isFinite(initialYear) ? initialYear : new Date().getFullYear(),
+      resumen: { totalHoras: 0, meses: {}, semanas: {} },
+      asigMap: new Map(),
+      codigos: [],
+      trabajador: null,
+      years: [],
+      loading: false,
+      me: null,
+      meId: null,
+      role: '',
+      admin: false,
+      encargado: false,
+      canManage: false,
+      tiendas: [],
+      empleados: [],
+      selectedTienda: normalizeSelectValue(initialStoreParam),
+      selectedWorker: normalizeSelectValue(initialWorkerParam),
+      storesLoaded: false,
+      workersLoaded: false
+    };
+
+    const el = {
+      selYear: document.getElementById('selYear'),
+      selStore: document.getElementById('selStore'),
+      selWorker: document.getElementById('selWorker'),
+      fieldStore: document.getElementById('fieldStore'),
+      fieldWorker: document.getElementById('fieldWorker'),
+      workerName: document.getElementById('workerName'),
+      workerStore: document.getElementById('workerStore'),
+      workerHours: document.getElementById('workerHours'),
+      workerDays: document.getElementById('workerDays'),
+      summaryMonths: document.getElementById('summaryMonths'),
+      legendCodes: document.getElementById('legendCodes'),
+      months: document.getElementById('months'),
+      status: document.getElementById('status')
+    };
+
+    function getToken() {
+      try { return localStorage.getItem('token') || ''; } catch (_) { return ''; }
+    }
+    function authHeaders() {
+      const h = { 'Content-Type': 'application/json' };
+      const t = getToken();
+      if (t) h['Authorization'] = 'Bearer ' + t;
+      return h;
+    }
+
+    function showStatus(msg, ok = true) {
+      if (!el.status) return;
+      if (!msg) {
+        el.status.textContent = '';
+        el.status.className = 'status';
+        return;
+      }
+      el.status.textContent = msg;
+      el.status.className = 'status ' + (ok ? 'ok' : 'err');
+    }
+
+    function fmtHours(value) {
+      const num = Math.round(Number(value || 0) * 100) / 100;
+      if (!Number.isFinite(num) || num === 0) return '0h';
+      return (num % 1 === 0 ? num.toString() : num.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')) + 'h';
+    }
+
+    function ymd(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return y + '-' + m + '-' + d;
+    }
+
+    function monday(date) {
+      const d = new Date(date);
+      const wd = (d.getDay() + 6) % 7;
+      d.setDate(d.getDate() - wd);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    function weeksOfMonth(year, month) {
+      const first = new Date(year, month, 1);
+      const last = new Date(year, month + 1, 0);
+      const start = monday(first);
+      const weeks = [];
+      const checkMonth = (iso) => {
+        const d = new Date(iso + 'T00:00:00');
+        return d.getFullYear() === year && d.getMonth() === month;
+      };
+      let cur = new Date(start);
+      while (cur <= last || (cur.getMonth() === month && cur.getDate() === 1)) {
+        const days = [];
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(cur);
+          d.setDate(cur.getDate() + i);
+          days.push(ymd(d));
+        }
+        const anyInMonth = days.some((iso) => checkMonth(iso));
+        if (!anyInMonth && weeks.length) break;
+        weeks.push({ start: ymd(cur), days });
+        cur.setDate(cur.getDate() + 7);
+      }
+      return weeks;
+    }
+
+    async function loadYears() {
+      try {
+        const res = await fetch(PLAN + '/anios', { headers: authHeaders() });
+        if (!res.ok) throw new Error('No se pudieron cargar los anios');
+        const list = await res.json();
+        state.years = Array.isArray(list) ? list : [];
+        renderYearOptions();
+      } catch (err) {
+        console.error(err);
+        showStatus(err.message || 'Error al cargar anios', false);
+      }
+    }
+
+    function renderYearOptions() {
+      const options = state.years.length ? state.years : [{ valor: state.year }];
+      el.selYear.innerHTML = options.map((o) => {
+        const val = Number(o.valor || o);
+        return '<option value="' + val + '">' + val + '</option>';
+      }).join('');
+      if (!options.some((o) => Number(o.valor || o) === Number(state.year))) {
+        const first = options[0];
+        state.year = Number(first?.valor || first || new Date().getFullYear());
+      }
+      el.selYear.value = state.year;
+    }
+
+    function renderStoreOptions() {
+      if (!el.fieldStore || !el.selStore) return;
+      if (!state.canManage) {
+        el.fieldStore.style.display = 'none';
+        return;
+      }
+      el.fieldStore.style.display = 'block';
+      el.selStore.innerHTML = '';
+      const normalized = state.selectedTienda;
+      if (normalized && !state.tiendas.some((t) => String(t.id_tienda) === normalized)) {
+        state.selectedTienda = null;
+      }
+      if (!state.tiendas.length) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'Sin centros';
+        el.selStore.appendChild(opt);
+        el.selStore.disabled = true;
+        return;
+      }
+      el.selStore.disabled = false;
+      state.tiendas.forEach((t) => {
+        const opt = document.createElement('option');
+        opt.value = String(t.id_tienda);
+        opt.textContent = t.nombre;
+        el.selStore.appendChild(opt);
+      });
+      if (state.encargado && !state.admin) {
+        const mine = state.tiendas.find((t) => String(t.id_jefe) === state.meId);
+        if (mine) state.selectedTienda = String(mine.id_tienda);
+        el.selStore.disabled = true;
+      }
+      if (!state.selectedTienda) {
+        const first = state.tiendas[0];
+        state.selectedTienda = first ? String(first.id_tienda) : null;
+      }
+      if (state.selectedTienda) {
+        el.selStore.value = state.selectedTienda;
+        updateQueryParam('tienda', state.selectedTienda);
+      }
+    }
+
+    function renderWorkerOptions(autoSelect = false) {
+      if (!el.fieldWorker || !el.selWorker) return false;
+      if (!state.canManage) {
+        el.fieldWorker.style.display = 'none';
+        return false;
+      }
+      el.fieldWorker.style.display = 'block';
+      el.selWorker.innerHTML = '';
+      if (!state.empleados.length) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'Sin empleados';
+        el.selWorker.appendChild(opt);
+        el.selWorker.disabled = true;
+        if (autoSelect) {
+          state.selectedWorker = null;
+          updateQueryParam('trabajador', '');
+        }
+        return false;
+      }
+      el.selWorker.disabled = false;
+      const current = state.selectedWorker ? String(state.selectedWorker) : null;
+      let exists = false;
+      state.empleados.forEach((emp) => {
+        const val = String(emp.id_trabajador);
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = emp.nombre || ('Trabajador ' + val);
+        if (current && current === val) {
+          opt.selected = true;
+          exists = true;
+        }
+        el.selWorker.appendChild(opt);
+      });
+      if (!exists) {
+        if (autoSelect) {
+          state.selectedWorker = String(state.empleados[0].id_trabajador);
+          el.selWorker.value = state.selectedWorker;
+          updateQueryParam('trabajador', state.selectedWorker);
+          return true;
+        }
+        if (state.selectedWorker) {
+          const custom = document.createElement('option');
+          const val = String(state.selectedWorker);
+          custom.value = val;
+          custom.textContent = state.trabajador?.nombre || ('Trabajador ' + val);
+          custom.selected = true;
+          custom.dataset.outside = '1';
+          el.selWorker.insertBefore(custom, el.selWorker.firstChild);
+        } else {
+          const placeholder = document.createElement('option');
+          placeholder.value = '';
+          placeholder.textContent = 'Selecciona trabajador';
+          placeholder.selected = true;
+          placeholder.disabled = true;
+          el.selWorker.insertBefore(placeholder, el.selWorker.firstChild);
+        }
+      } else if (state.selectedWorker) {
+        el.selWorker.value = String(state.selectedWorker);
+      }
+      return false;
+    }
+
+    async function loadStores() {
+      if (!state.canManage) return;
+      try {
+        const res = await fetch(API + '/tiendas', { headers: authHeaders() });
+        if (!res.ok) throw new Error('No se pudieron cargar centros de trabajo');
+        const list = await res.json();
+        state.tiendas = Array.isArray(list) ? list : [];
+      } catch (err) {
+        console.error(err);
+        state.tiendas = [];
+        showStatus(err.message || 'Error al cargar centros de trabajo', false);
+      }
+      state.storesLoaded = true;
+      renderStoreOptions();
+    }
+
+    async function loadWorkers(autoSelect = false) {
+      if (!state.canManage) return false;
+      if (!state.selectedTienda) {
+        state.empleados = [];
+        return renderWorkerOptions(autoSelect);
+      }
+      try {
+        const res = await fetch(PLAN + '/empleados?tienda=' + encodeURIComponent(state.selectedTienda), { headers: authHeaders() });
+        if (!res.ok) throw new Error('No se pudieron cargar empleados');
+        const list = await res.json();
+        state.empleados = Array.isArray(list) ? list : [];
+      } catch (err) {
+        console.error(err);
+        state.empleados = [];
+        showStatus(err.message || 'Error al cargar empleados', false);
+      }
+      state.workersLoaded = true;
+      return renderWorkerOptions(autoSelect);
+    }
+
+    function applyData(data) {
+      state.trabajador = data.trabajador || null;
+      state.codigos = Array.isArray(data.codigos) ? data.codigos : [];
+      state.resumen = data.resumen || { totalHoras: 0, meses: {}, semanas: {} };
+      state.asigMap = new Map();
+      if (Array.isArray(data.asignaciones)) {
+        data.asignaciones.forEach((row) => {
+          if (row && row.fecha) state.asigMap.set(row.fecha, row);
+        });
+      }
+      updateWorkerInfo();
+      renderSummary();
+      renderLegend();
+      renderMonths();
+    }
+
+    function updateWorkerInfo() {
+      if (state.trabajador) {
+        const displayName = state.trabajador.nombre || state.trabajador.email || 'Trabajador';
+        el.workerName.textContent = displayName;
+        const tiendaNombre = state.trabajador.tienda || '';
+        if (tiendaNombre) {
+          el.workerStore.textContent = 'Tienda: ' + tiendaNombre;
+        } else if (state.canManage) {
+          el.workerStore.textContent = 'Sin tienda asignada';
+        } else {
+          el.workerStore.textContent = '';
+        }
+      } else {
+        el.workerName.textContent = '-';
+        el.workerStore.textContent = '';
+      }
+      el.workerHours.textContent = fmtHours(state.resumen.totalHoras);
+      const dias = Object.values(state.resumen.meses || {}).reduce((acc, m) => acc + (m?.dias || 0), 0);
+      el.workerDays.textContent = dias ? dias + ' dias trabajados' : '';
+    }
+
+    function renderSummary() {
+      const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      el.summaryMonths.innerHTML = '';
+      for (let i = 0; i < 12; i++) {
+        const key = String(i + 1).padStart(2, '0');
+        const info = state.resumen.meses?.[key] || { horas: 0, dias: 0 };
+        const box = document.createElement('div');
+        box.className = 'summary-item';
+        box.innerHTML = '<div class="label">' + monthNames[i] + '</div>' +
+          '<div class="value">' + fmtHours(info.horas || 0) + '</div>' +
+          '<div class="muted-small">' + (info.dias || 0) + ' dias</div>';
+        el.summaryMonths.appendChild(box);
+      }
+    }
+
+    function renderLegend() {
+      el.legendCodes.innerHTML = '';
+      if (!state.codigos.length) {
+        const span = document.createElement('span');
+        span.className = 'muted-small';
+        span.textContent = 'No hay codigos activos';
+        el.legendCodes.appendChild(span);
+        return;
+      }
+      state.codigos.forEach((c) => {
+        const badge = document.createElement('div');
+        badge.className = 'code-badge';
+        badge.title = c.descripcion || '';
+        badge.innerHTML = '<span class="code">' + (c.codigo || '-') + '</span>' +
+          '<span>' + fmtHours(c.horas || 0) + '</span>';
+        el.legendCodes.appendChild(badge);
+      });
+    }
+
+    function renderMonths() {
+      el.months.innerHTML = '';
+      const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      const now = new Date();
+      const currentMonth = state.year === now.getFullYear() ? now.getMonth() : -1;
+      for (let month = 0; month < 12; month++) {
+        const box = document.createElement('div');
+        box.className = 'month' + (month === currentMonth ? ' expanded' : '');
+        const head = document.createElement('div');
+        head.className = 'head';
+        const title = document.createElement('h3');
+        title.textContent = monthNames[month] + ' ' + state.year;
+        const monthKey = String(month + 1).padStart(2, '0');
+        const info = state.resumen.meses?.[monthKey] || { horas: 0, dias: 0 };
+        const hint = document.createElement('div');
+        hint.className = 'muted-small';
+        hint.textContent = fmtHours(info.horas || 0) + ' - ' + (info.dias || 0) + ' dias';
+        head.appendChild(title);
+        head.appendChild(hint);
+        box.appendChild(head);
+
+        const body = document.createElement('div');
+        body.className = 'body';
+        const weeks = weeksOfMonth(state.year, month);
+        weeks.forEach((week) => {
+          const weekBox = document.createElement('div');
+          weekBox.className = 'week';
+          const wHead = document.createElement('div');
+          wHead.className = 'w-head';
+          const wTitle = document.createElement('div');
+          wTitle.className = 'w-title';
+          wTitle.textContent = 'Semana ' + week.days[0] + ' a ' + week.days[6];
+          const totals = state.resumen.semanas?.[week.start] || { horas: 0, dias: 0 };
+          const recap = document.createElement('div');
+          recap.className = 'muted-small';
+          recap.textContent = fmtHours(totals.horas || 0) + ' - ' + (totals.dias || 0) + ' dias';
+          wHead.appendChild(wTitle);
+          wHead.appendChild(recap);
+          weekBox.appendChild(wHead);
+
+          const tableWrap = document.createElement('div');
+          tableWrap.className = 'table-wrap';
+          const table = document.createElement('table');
+          const thead = document.createElement('thead');
+          const tr = document.createElement('tr');
+          ['L','M','X','J','V','S','D'].forEach((letter) => {
+            const th = document.createElement('th');
+            th.textContent = letter;
+            tr.appendChild(th);
+          });
+          thead.appendChild(tr);
+          table.appendChild(thead);
+          const tbody = document.createElement('tbody');
+          const row = document.createElement('tr');
+          week.days.forEach((iso) => {
+            const td = document.createElement('td');
+            const cell = document.createElement('div');
+            cell.className = 'day-cell';
+            const dt = new Date(iso + 'T00:00:00');
+            const inMonth = dt.getFullYear() === state.year && dt.getMonth() === month;
+            if (!inMonth) td.classList.add('off-month');
+            const asign = state.asigMap.get(iso);
+            if (asign && asign.codigo) {
+              const code = document.createElement('div');
+              code.className = 'code';
+              code.textContent = asign.codigo;
+              cell.appendChild(code);
+              const hours = document.createElement('div');
+              hours.className = 'hours';
+              hours.textContent = fmtHours(asign.horas || 0);
+              cell.appendChild(hours);
+              if (asign.descripcion) td.title = asign.descripcion;
+            } else {
+              const empty = document.createElement('div');
+              empty.className = 'empty';
+              empty.textContent = 'Libre';
+              cell.appendChild(empty);
+            }
+            const dateLabel = document.createElement('div');
+            dateLabel.className = 'muted-small';
+            dateLabel.textContent = iso.slice(8, 10);
+            cell.appendChild(dateLabel);
+            td.appendChild(cell);
+            row.appendChild(td);
+          });
+          tbody.appendChild(row);
+          table.appendChild(tbody);
+          tableWrap.appendChild(table);
+          weekBox.appendChild(tableWrap);
+          body.appendChild(weekBox);
+        });
+        if (!weeks.length) {
+          const none = document.createElement('div');
+          none.className = 'muted-small';
+          none.textContent = 'Sin semanas para este mes';
+          body.appendChild(none);
+        }
+        box.appendChild(body);
+
+        head.addEventListener('click', () => {
+          box.classList.toggle('expanded');
+        });
+
+        el.months.appendChild(box);
+      }
+    }
+
+    async function postApplyData() {
+      if (!state.canManage) return;
+      if (!state.trabajador) {
+        renderWorkerOptions(false);
+        return;
+      }
+      const workerIdRaw = state.trabajador.id_trabajador != null ? state.trabajador.id_trabajador : state.trabajador.id_usuario;
+      if (workerIdRaw != null) {
+        state.selectedWorker = String(workerIdRaw);
+        updateQueryParam('trabajador', state.selectedWorker);
+      }
+      const storeId = state.trabajador.id_tienda != null ? String(state.trabajador.id_tienda) : null;
+      if (storeId) {
+        const storeChanged = state.selectedTienda !== storeId;
+        state.selectedTienda = storeId;
+        if (el.selStore) el.selStore.value = storeId;
+        updateQueryParam('tienda', storeId);
+        if (storeChanged) {
+          await loadWorkers(false);
+        } else {
+          renderWorkerOptions(false);
+        }
+      } else {
+        renderWorkerOptions(false);
+      }
+      if (el.selWorker && state.selectedWorker) {
+        el.selWorker.value = state.selectedWorker;
+      }
+    }
+
+    async function loadData(year) {
+      state.year = Number(year) || state.year;
+      if (el.selYear.value !== String(state.year)) el.selYear.value = state.year;
+      const token = getToken();
+      if (!token) {
+        showStatus('Sesion requerida', false);
+        setTimeout(() => { window.location.href = 'login.html'; }, 800);
+        return;
+      }
+      const workerId = state.selectedWorker || state.meId;
+      if (!workerId) {
+        state.trabajador = null;
+        state.resumen = { totalHoras: 0, meses: {}, semanas: {} };
+        state.asigMap = new Map();
+        updateWorkerInfo();
+        renderSummary();
+        renderLegend();
+        renderMonths();
+        showStatus('Selecciona un trabajador', false);
+        return;
+      }
+      state.selectedWorker = String(workerId);
+      state.loading = true;
+      showStatus('Cargando calendario...', true);
+      try {
+        const res = await fetch(PLAN + '/usuario/' + encodeURIComponent(state.selectedWorker) + '?anio=' + state.year, { headers: authHeaders() });
+        if (res.status === 401) {
+          showStatus('Sesion expirada', false);
+          setTimeout(() => { window.location.href = 'login.html'; }, 900);
+          return;
+        }
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || 'Error al cargar calendario');
+        }
+        const data = await res.json();
+        applyData(data);
+        await postApplyData();
+        showStatus('Calendario actualizado', true);
+        setTimeout(() => showStatus('', true), 1500);
+      } catch (err) {
+        console.error(err);
+        showStatus(err.message || 'Error al cargar calendarios', false);
+      } finally {
+        state.loading = false;
+      }
+    }
+
+    async function init() {
+      if (!getToken()) {
+        showStatus('Inicia sesion para ver tu calendario', false);
+        setTimeout(() => { window.location.href = 'login.html'; }, 1000);
+        return;
+      }
+      state.me = decodeUser();
+      state.meId = resolveUserId(state.me);
+      const rol = roleKey(state.me?.rol);
+      state.role = rol;
+      state.admin = rol === 'admin' || rol === 'administrador';
+      state.encargado = rol === 'encargado' || rol === 'jefe';
+      state.canManage = state.admin || state.encargado;
+      if (!state.selectedWorker && state.meId) {
+        state.selectedWorker = state.meId;
+      }
+
+      renderYearOptions();
+      await loadYears();
+
+      if (state.canManage) {
+        await loadStores();
+        if (state.selectedTienda && el.selStore) {
+          el.selStore.value = state.selectedTienda;
+        }
+        const hadWorkerParam = searchParams.has('trabajador');
+        await loadWorkers(!hadWorkerParam);
+        if (!state.selectedWorker && state.empleados.length) {
+          state.selectedWorker = String(state.empleados[0].id_trabajador);
+          updateQueryParam('trabajador', state.selectedWorker);
+        }
+      }
+
+      await loadData(state.year);
+    }
+
+    if (el.selYear) {
+      el.selYear.addEventListener('change', (ev) => {
+        const value = Number(ev.target.value);
+        if (!Number.isFinite(value)) return;
+        state.year = value;
+        if (!state.loading) {
+          loadData(value);
+        }
+      });
+    }
+
+    if (el.selStore) {
+      el.selStore.addEventListener('change', async (ev) => {
+        const val = normalizeSelectValue(ev.target.value);
+        if (!val) {
+          state.selectedTienda = null;
+          updateQueryParam('tienda', '');
+          state.empleados = [];
+          renderWorkerOptions(false);
+          showStatus('Selecciona un centro de trabajo', false);
+          return;
+        }
+        if (state.selectedTienda === val) return;
+        state.selectedTienda = val;
+        updateQueryParam('tienda', val);
+        const changed = await loadWorkers(true);
+        if (changed && state.selectedWorker) {
+          loadData(state.year);
+        } else if (!state.selectedWorker) {
+          showStatus('Selecciona un trabajador', false);
+        }
+      });
+    }
+
+    if (el.selWorker) {
+      el.selWorker.addEventListener('change', (ev) => {
+        const val = normalizeSelectValue(ev.target.value);
+        if (!val) {
+          state.selectedWorker = null;
+          updateQueryParam('trabajador', '');
+          showStatus('Selecciona un trabajador', false);
+          return;
+        }
+        if (state.selectedWorker === val) return;
+        state.selectedWorker = val;
+        updateQueryParam('trabajador', val);
+        loadData(state.year);
+      });
+    }
+
+    init();</script>
+</body>
+</html>
+
+
+
+
