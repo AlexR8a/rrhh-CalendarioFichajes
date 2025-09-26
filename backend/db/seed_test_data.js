@@ -6,10 +6,12 @@ async function setStoreManager(id_tienda,id_jefe){await db('Tiendas').where({id_
 async function ensureWorkerInStore(id_usuario,id_tienda){const ex=await db('Trabajadores').where({id_trabajador:id_usuario}).first();if(ex)return;const hoy=new Date().toISOString().slice(0,10);await db('Trabajadores').insert({id_trabajador:id_usuario,id_tienda,fecha_alta:hoy})}
 async function ensureTipoTurno(nombre){const r=await db('TiposTurno').where({nombre}).first();if(r)return r.id_tipo_turno||r.id||r.ID;const [id]=await db('TiposTurno').insert({nombre});return id}
 async function ensureTurno({id_tienda,id_tipo_turno=null,hora_inicio,hora_fin}){let q=db('Turnos').where({id_tienda,hora_inicio,hora_fin});if(id_tipo_turno)q=q.andWhere({id_tipo_turno});const e=await q.first();if(e)return e.id_turno||e.id||e.ID;const [id]=await db('Turnos').insert({id_tienda,id_tipo_turno,hora_inicio,hora_fin});return id}
+async function ensureTurnoCodigo({codigo,descripcion='',horas=0,activo=true}){const e=await db('TurnosCodigo').where({codigo}).first();if(e){return{created:false,record:{id_turno_codigo:e.id_turno_codigo||e.id||e.ID,codigo:e.codigo,descripcion:e.descripcion,horas:Number(e.horas??horas),activo:e.activo!==undefined?!!e.activo:true}}}const inserted=await db('TurnosCodigo').insert({codigo,descripcion,horas,activo});let id=inserted&&inserted[0];if(id&&typeof id==='object'){id=id.id_turno_codigo||id.id||id.ID}if(!id){const row=await db('TurnosCodigo').where({codigo}).first();return{created:true,record:{id_turno_codigo:row?.id_turno_codigo||row?.id||row?.ID,codigo:row?.codigo??codigo,descripcion:row?.descripcion??descripcion,horas:Number(row?.horas??horas),activo:row?.activo!==undefined?!!row?.activo:true}}}return{created:true,record:{id_turno_codigo:id,codigo,descripcion,horas:Number(horas),activo}}}
 function mondayOfWeek(s){const d=new Date(`${s}T00:00:00`);const g=d.getDay();const diff=(g===0?-6:1-g);d.setDate(d.getDate()+diff);return d.toISOString().slice(0,10)}
 function weekDates(a){const r=[];const s=new Date(`${a}T00:00:00`);for(let i=0;i<7;i++){const d=new Date(s);d.setDate(d.getDate()+i);r.push(d.toISOString().slice(0,10))}return r}
 async function upsertReq({id_turno,fecha,cantidad}){const e=await db('RequerimientosTurno').where({id_turno,fecha}).first();if(e){await db('RequerimientosTurno').where({id_turno,fecha}).update({cantidad})}else{await db('RequerimientosTurno').insert({id_turno,fecha,cantidad})}}
 async function ensureAsig({id_trabajador,id_turno,fecha,asignado_por=null}){const e=await db('AsignacionesTurno').where({id_trabajador,id_turno,fecha}).first();if(e)return e.id_asignacion||e.id||e.ID;const [id]=await db('AsignacionesTurno').insert({id_trabajador,id_turno,fecha,asignado_por});return id}
+async function upsertPlanificacionAsignacion({id_trabajador,fecha,id_turno_codigo=null}){const e=await db('PlanificacionAsignaciones').where({id_trabajador,fecha}).first();if(e){const id=e.id_asignacion||e.id||e.ID;const mismo=(e.id_turno_codigo===id_turno_codigo)||(!e.id_turno_codigo&&id_turno_codigo==null);if(!mismo)await db('PlanificacionAsignaciones').where({id_asignacion:id}).update({id_turno_codigo});return{id_asignacion:id,created:false,updated:!mismo}}const inserted=await db('PlanificacionAsignaciones').insert({id_trabajador,fecha,id_turno_codigo});let id=inserted&&inserted[0];if(id&&typeof id==='object'){id=id.id_asignacion||id.id||id.ID}if(!id){const row=await db('PlanificacionAsignaciones').where({id_trabajador,fecha}).first();id=row?.id_asignacion||row?.id||row?.ID}return{id_asignacion:id,created:true,updated:false}}
 async function ensureFichaje({id_trabajador,fecha,hora_entrada=null,hora_salida=null,fuente='fichaje'}){const e=await db('Fichajes').where({id_trabajador,fecha}).first();if(e){const p={};if(hora_entrada&&!e.hora_entrada)p.hora_entrada=hora_entrada;if(hora_salida&&!e.hora_salida)p.hora_salida=hora_salida;if(Object.keys(p).length)await db('Fichajes').where({id_fichaje:e.id_fichaje}).update(p);return e.id_fichaje||e.id||e.ID}const [id]=await db('Fichajes').insert({id_trabajador,fecha,hora_entrada,hora_salida,fuente});return id}
 
 // Añade este helper arriba, junto al resto de helpers
@@ -57,7 +59,22 @@ async function main(){try{
     }
   }
 
-  // ---- 5) Tipos de turno (más variados) ----
+  // ---- 5) Códigos base para planificación anual ----
+  const turnosCodigoSeed = [
+    { codigo:'M',     descripcion:'Turno de mañana (4h)',      horas:4 },
+    { codigo:'T',     descripcion:'Turno de tarde (4h)',      horas:4 },
+    { codigo:'C',     descripcion:'Turno completo (8h)',      horas:8 },
+    { codigo:'LIBRE', descripcion:'Día libre / descanso',      horas:0 },
+    { codigo:'VAC',   descripcion:'Vacaciones / ausencias',    horas:0 }
+  ];
+  const turnosCodigo = [];
+  for(const tc of turnosCodigoSeed){
+    const res = await ensureTurnoCodigo(tc);
+    turnosCodigo.push({ ...res.record, creado: res.created });
+  }
+  const turnosCodigoMap = new Map(turnosCodigo.map(tc=>[tc.codigo, tc]));
+
+  // ---- 6) Tipos de turno (más variados) ----
   const tipoCaja   = await ensureTipoTurno('Caja');
   const tipoRepo   = await ensureTipoTurno('Reposición');
   const tipoLimp   = await ensureTipoTurno('Limpieza');
@@ -73,7 +90,7 @@ async function main(){try{
     { tipo: tipoOnline, etiqueta:'Online Mañana',  hora_inicio:'08:00', hora_fin:'12:00' },
   ];
 
-  // ---- 6) Crear TURNOS por cada tienda siguiendo las plantillas ----
+  // ---- 7) Crear TURNOS por cada tienda siguiendo las plantillas ----
   // Guardamos ids de turnos por tienda y etiqueta para asignaciones posteriores
   const turnosPorTienda = new Map(); // key id_tienda -> array de {id_turno, tipo, etiqueta}
   for(const t of tiendas){
@@ -90,7 +107,7 @@ async function main(){try{
     turnosPorTienda.set(t.id_tienda, arr);
   }
 
-  // ---- 7) Requerimientos de la SEMANA actual para TODOS los turnos ----
+  // ---- 8) Requerimientos de la SEMANA actual para TODOS los turnos ----
   const hoy   = new Date().toISOString().slice(0,10);
   const lunes = mondayOfWeek(hoy);
   const fechas = weekDates(lunes); // 7 días
@@ -113,7 +130,33 @@ async function main(){try{
     }
   }
 
-  // ---- 8) Asignaciones de ejemplo (Lu-Vi) haciendo un reparto round-robin de trabajadores en su tienda ----
+  // ---- 9) Planificación anual de ejemplo para visualización inicial ----
+  const planFechas = fechas.slice(0, Math.min(5, fechas.length));
+  const planCodigos = ['M','T','C','LIBRE'].filter(c=>turnosCodigoMap.has(c));
+  let planificacionesCreadas = 0;
+  let planificacionesActualizadas = 0;
+  const planificacionEjemplo = [];
+  if(planFechas.length && planCodigos.length){
+    for(const t of tiendas){
+      const workers = trabajadores.filter(w=>w.id_tienda===t.id_tienda).slice(0,3);
+      for(let wi=0;wi<workers.length;wi++){
+        const trabajador = workers[wi];
+        for(let di=0;di<planFechas.length;di++){
+          const codigo = planCodigos[(wi + di) % planCodigos.length];
+          const codigoInfo = turnosCodigoMap.get(codigo);
+          if(!codigoInfo) continue;
+          const planRes = await upsertPlanificacionAsignacion({ id_trabajador:trabajador.id_usuario, fecha:planFechas[di], id_turno_codigo:codigoInfo.id_turno_codigo });
+          if(planRes.created) planificacionesCreadas++;
+          else if(planRes.updated) planificacionesActualizadas++;
+          if(planificacionEjemplo.length<10){
+            planificacionEjemplo.push({ trabajador:trabajador.id_usuario, fecha:planFechas[di], codigo });
+          }
+        }
+      }
+    }
+  }
+
+  // ---- 10) Asignaciones de ejemplo (Lu-Vi) haciendo un reparto round-robin de trabajadores en su tienda ----
   // Para cada tienda: recorrer trabajadores y asignarlos a turnos distintos durante la semana
   for(const t of tiendas){
     const jefe = jefes.find(j=>j.tienda.id_tienda===t.id_tienda)?.jefe;
@@ -140,7 +183,7 @@ async function main(){try{
     }
   }
 
-  // ---- 9) FICHAJES de los 2 días anteriores para algunos trabajadores al azar ----
+  // ---- 11) FICHAJES de los 2 días anteriores para algunos trabajadores al azar ----
   const ayer    = new Date(`${hoy}T00:00:00`); ayer.setDate(ayer.getDate()-1);
   const antier  = new Date(`${hoy}T00:00:00`); antier.setDate(antier.getDate()-2);
   const fAy = ayer.toISOString().slice(0,10);
@@ -162,12 +205,24 @@ async function main(){try{
     }
   }
 
-  // ---- 10) LOG resumen ----
+  // ---- 12) LOG resumen ----
   console.log('Seed OK (extendida). Resumen:',{
     tiendas: tiendas.map(t=>({id_tienda:t.id_tienda, nombre:t.nombre})),
     totalTrabajadores: trabajadores.length,
     admins: [admin1.id_usuario],
     tiposTurno: ['Caja','Reposición','Limpieza','Online'],
+    turnosCodigo: turnosCodigo.map(c=>({
+      id_turno_codigo:c.id_turno_codigo,
+      codigo:c.codigo,
+      horas:c.horas,
+      descripcion:c.descripcion,
+      creado:c.creado
+    })),
+    planificacionAsignaciones: {
+      creadas: planificacionesCreadas,
+      actualizadas: planificacionesActualizadas,
+      muestra: planificacionEjemplo
+    },
     ejemplo: {
       cualquierTienda: tiendas[0]?.id_tienda,
       cualquierTrabajador: trabajadores[0]?.id_usuario
