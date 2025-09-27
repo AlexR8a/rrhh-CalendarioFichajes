@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Semana ¬∑ Horarios por hora</title>
+  <title>Semana ∑ Horarios por hora</title>
   <!-- Reutiliza tu styles.css con las variables y componentes que enviaste -->
   <link rel="stylesheet" href="styles.css" />
   <style>
-    /* Ajustes espec√≠ficos de esta vista (respetando tu sistema de dise√±o) */
+    /* Ajustes especÌficos de esta vista (respetando tu sistema de diseÒo) */
     .controls { display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:12px; }
     .controls .actions { display:flex; gap:8px; align-items:end; justify-content:flex-end; }
     .timeline-wrap { overflow:auto; border:1px solid var(--border); border-radius:12px; background: var(--bg-soft); }
@@ -34,32 +34,10 @@
   </style>
 </head>
 <body>
-  <header>
-    <div class="container nav">
-      <a class="brand" href="index.html" aria-label="Inicio">
-        <div class="logo" aria-hidden="true"></div>
-        <div>RRHH App</div>
-      </a>
-      <nav class="navlinks" aria-label="Navegaci√≥n principal">
-        <a href="ver-usuarios.html">Usuarios</a>
-        <a href="ver-tiendas.html">Tiendas</a>
-        <a href="asignar-turnos.html">Turnos</a>
-        <a href="calendario-usuario.html">Mi calendario</a>
-        <a href="fichajes.html">Fichajes</a>
-      </nav>
-      <button class="btn btn-outline" id="btnTheme" title="Cambiar tema"></button>
-      <div class="user" id="userBox">
-        <span id="userLabel">No autenticado</span>
-        <a class="btn btn-outline" href="login.html" id="btnLogin">Entrar</a>
-        <button class="btn" id="btnLogout" style="display:none">Salir</button>
-      </div>
-    </div>
-  </header>
-
   <main class="container">
     <section class="hero">
-      <h1 class="title">Semana ¬∑ Horarios por hora</h1>
-      <p class="subtitle">Vista de cuadrante horario por d√≠as (L‚ÄìD) y totales de horas por empleado.</p>
+      <h1 class="title">Semana ∑ Horarios por hora</h1>
+      <p class="subtitle">Vista de cuadrante horario por dÌas (LñD) y totales de horas por empleado.</p>
     </section>
 
     <div class="card" style="margin-bottom:14px;">
@@ -77,9 +55,9 @@
           <input id="inpHoras" placeholder="08-22" value="08-22" />
         </div>
         <div class="actions">
-          <button class="btn btn-secondary" id="btnPrev">‚Üê Semana anterior</button>
+          <button class="btn btn-secondary" id="btnPrev">? Semana anterior</button>
           <button class="btn" id="btnHoy">Hoy</button>
-          <button class="btn btn-secondary" id="btnNext">Semana siguiente ‚Üí</button>
+          <button class="btn btn-secondary" id="btnNext">Semana siguiente ?</button>
         </div>
       </div>
       <div class="status muted-small" id="statusBox"></div>
@@ -99,13 +77,7 @@
     </section>
   </main>
 
-  <footer>
-    <div class="container foot">
-      <div>&copy; <span id="y"></span> RRHH App</div>
-      <div><a href="#" id="goTop">Ir arriba</a></div>
-    </div>
-  </footer>
-
+  <script src="app.js"></script>
   <script>
     /* ================= Utilidades comunes ================= */
     const API = 'http://localhost:3000/api';
@@ -177,7 +149,7 @@
     /* ================= Carga inicial ================= */
     async function init(){
       state.me = decodeUser();
-      if (!state.me) { alert('Inicia sesi√≥n'); location.href='login.html'; return; }
+      if (!state.me) { alert('Inicia sesiÛn'); location.href='login.html'; return; }
       await loadTiendas();
       inpSemana.value = ymd(new Date());
       renderLegend();
@@ -192,7 +164,7 @@
       }catch{ state.tiendas = []; }
       selTienda.innerHTML = '';
       for (const t of state.tiendas){ const o=document.createElement('option'); o.value=t.id_tienda; o.textContent=t.nombre; selTienda.appendChild(o); }
-      // Autoselecci√≥n para jefe/encargado
+      // AutoselecciÛn para jefe/encargado
       const rol = String(state.me?.rol||'').toLowerCase();
       const myUid = uidOf(state.me);
       if (rol==='jefe' || rol==='encargado'){
@@ -214,7 +186,7 @@
       legendBox.innerHTML='';
       const tips = [
         'Clic en un nombre para resaltar todas sus franjas',
-        'Pasa el rat√≥n por la pastilla para ver el tramo',
+        'Pasa el ratÛn por la pastilla para ver el tramo',
         'Rango horario configurable (ej. 06-23)'
       ];
       for (const t of tips){ const b=document.createElement('span'); b.className='badge'; b.textContent=t; legendBox.appendChild(b); }
@@ -251,12 +223,12 @@
 
       const thead = document.createElement('thead');
       const thr = document.createElement('tr');
-      const th0 = document.createElement('th'); th0.className='day-col'; th0.textContent='D√≠a'; thr.appendChild(th0);
+      const th0 = document.createElement('th'); th0.className='day-col'; th0.textContent='DÌa'; thr.appendChild(th0);
       for (let h=H1; h<H2; h++){ const th=document.createElement('th'); th.className='hour-col'; th.textContent=hToLabel(h); thr.appendChild(th); }
       thead.appendChild(thr); grid.appendChild(thead);
 
       const tbody = document.createElement('tbody');
-      // √çndice r√°pido por d√≠a
+      // Õndice r·pido por dÌa
       const byDay = new Map();
       for (const a of state.asignaciones){ if (!byDay.has(a.fecha)) byDay.set(a.fecha, []); byDay.get(a.fecha).push(a); }
 
@@ -271,9 +243,9 @@
           // Ordena por nombre
           list.sort((a,b)=> a.nombre.localeCompare(b.nombre));
           for (const a of list){
-            const pill = document.createElement('span'); pill.className='pill'; pill.title = `${a.nombre} ¬∑ ${a.hora_inicio}‚Äì${a.hora_fin}`;
+            const pill = document.createElement('span'); pill.className='pill'; pill.title = `${a.nombre} ∑ ${a.hora_inicio}ñ${a.hora_fin}`;
             pill.dataset.emp = String(a.id_trabajador);
-            pill.innerHTML = `<span class="dot" aria-hidden="true"></span><span>${a.nombre}</span><span class="hrs">${a.hora_inicio}‚Äì${a.hora_fin}</span>`;
+            pill.innerHTML = `<span class="dot" aria-hidden="true"></span><span>${a.nombre}</span>`;
             pill.onclick = ()=> toggleHighlightEmployee(a.id_trabajador);
             td.appendChild(pill);
           }
@@ -286,7 +258,7 @@
 
     function toESDayLabel(iso){
       const d = new Date(iso+'T00:00:00');
-      const L = ['Lun','Mar','Mi√©','Jue','Vie','S√°b','Dom'];
+      const L = ['Lun','Mar','MiÈ','Jue','Vie','S·b','Dom'];
       const i = (d.getDay()+6)%7; // L=0
       return `${L[i]}`;
     }
@@ -306,24 +278,34 @@
 
     function renderTotals(){
       totalsBox.innerHTML='';
-      // Suma por empleado: diferencia entre fin y inicio (en horas decimales)
       const map = new Map();
       for (const a of state.asignaciones){
-        const s = (+a.hora_inicio.slice(0,2)) + (+a.hora_inicio.slice(3,5))/60;
-        const e = (+a.hora_fin.slice(0,2)) + (+a.hora_fin.slice(3,5))/60;
-        const hours = Math.max(0, e - s);
-        const prev = map.get(a.id_trabajador) || { nombre:a.nombre, horas:0, tramos:[] };
-        prev.horas += hours; prev.tramos.push(`${a.fecha} ${a.hora_inicio}‚Äì${a.hora_fin}`);
-        map.set(a.id_trabajador, prev);
+        if (!a || !a.hora_inicio || !a.hora_fin) continue;
+        const start = (+a.hora_inicio.slice(0,2)) + (+a.hora_inicio.slice(3,5))/60;
+        const end = (+a.hora_fin.slice(0,2)) + (+a.hora_fin.slice(3,5))/60;
+        let hours = end - start;
+        if (hours <= 0) hours += 24;
+        hours = Math.max(0, hours);
+        if (!map.has(a.id_trabajador)){
+          map.set(a.id_trabajador, { nombre: a.nombre, horas: 0, porDia: new Map() });
+        }
+        const info = map.get(a.id_trabajador);
+        info.horas += hours;
+        const current = info.porDia.get(a.fecha) || 0;
+        info.porDia.set(a.fecha, current + hours);
       }
-      // Render
       const sorted = [...map.entries()].sort((a,b)=> b[1].horas - a[1].horas);
       for (const [id, info] of sorted){
         const card = document.createElement('div'); card.className='card';
         const h = document.createElement('div'); h.className='title'; h.style.fontSize='18px'; h.textContent = info.nombre; card.appendChild(h);
         const p = document.createElement('div'); p.className='muted'; p.textContent = `${info.horas.toFixed(2)} h`; card.appendChild(p);
         const ul = document.createElement('ul'); ul.className='muted-small'; ul.style.marginTop='8px';
-        for (const t of info.tramos){ const li=document.createElement('li'); li.textContent=t; ul.appendChild(li); }
+        const entries = [...info.porDia.entries()].sort((a,b)=> a[0].localeCompare(b[0]));
+        for (const [fecha, horasDia] of entries){
+          const li = document.createElement('li');
+          li.textContent = `${fecha} - ${horasDia.toFixed(2)} h`;
+          ul.appendChild(li);
+        }
         card.appendChild(ul);
         card.onclick = ()=> toggleHighlightEmployee(id);
         totalsBox.appendChild(card);
@@ -332,27 +314,10 @@
         const empty = document.createElement('div'); empty.className='muted'; empty.textContent='Sin asignaciones en esta semana.'; totalsBox.appendChild(empty);
       }
     }
-
-    // Tema y utilidades r√°pidas para demo (opcional)
-    const ySpan = document.getElementById('y'); ySpan.textContent = new Date().getFullYear();
-    const btnTheme = document.getElementById('btnTheme');
-    const _t = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-    document.documentElement.setAttribute('data-theme', _t);
-    btnTheme.textContent = _t === 'dark' ? '‚òæ' : '‚òÄ';
-
-    btnTheme.onclick = ()=>{
-    const cur = document.documentElement.getAttribute('data-theme') || 'dark';
-    const next = cur === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    try { localStorage.setItem('theme', next); } catch {}
-    btnTheme.textContent = next === 'dark' ? '‚òæ' : '‚òÄ';
-    };
-
-
-    // Go top
-    document.getElementById('goTop').onclick = (e)=>{ e.preventDefault(); window.scrollTo({ top:0, behavior:'smooth' }); };
-
     init();
   </script>
 </body>
 </html>
+
+
+

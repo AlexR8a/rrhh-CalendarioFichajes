@@ -18,29 +18,6 @@
   </style>
 </head>
 <body>
-  <header>
-    <div class="container nav">
-      <a class="brand" href="index.html" aria-label="Inicio">
-        <div class="logo" aria-hidden="true"></div>
-        <div>RRHH App</div>
-      </a>
-      <nav class="navlinks" aria-label="Navegación principal">
-        <a href="ver-usuarios.html">Usuarios</a>
-        <a href="ver-tiendas.html">Tiendas</a>
-        <a href="asignar-turnos.html">Turnos</a>
-        <a href="calendario-usuario.html">Mi calendario</a>
-        <a href="fichajes.html">Fichajes</a>
-        <a href="crear-turno.html">Crear turno</a>
-        <a href="HorariosSemana.html">Semana · Horarios</a>
-      </nav>
-      <button class="btn btn-outline" id="btnTheme" title="Cambiar tema"></button>
-      <div class="user" id="userBox">
-        <span id="userLabel">No autenticado</span>
-        <a class="btn btn-outline" href="login.html" id="btnLogin">Entrar</a>
-        <button class="btn" id="btnLogout" style="display:none">Salir</button>
-      </div>
-    </div>
-  </header>
 
   <main class="container">
     <section class="hero">
@@ -92,13 +69,7 @@
     </div>
   </main>
 
-  <footer>
-    <div class="container foot">
-      <div>© <span id="y"></span> RRHH App · Gestión interna</div>
-      <div><a href="#" id="goTop">Ir arriba</a></div>
-    </div>
-  </footer>
-
+  <script src="app.js"></script>
   <script>
     /* ===== Utilidades comunes / auth ===== */
     const API = 'http://localhost:3000/api';
@@ -130,28 +101,9 @@
       log: [], // {ts, usuario, lat, lng, acc}
     };
 
-    /* ===== Inicialización ===== */
-    const ySpan = document.getElementById('y'); ySpan.textContent = new Date().getFullYear();
-
-    function applyThemeInit(){
-      const btnTheme = document.getElementById('btnTheme');
-      const _t = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-      document.documentElement.setAttribute('data-theme', _t);
-      btnTheme.textContent = _t==='dark' ? '☾' : '☀';
-      btnTheme.onclick = ()=>{
-        const cur = document.documentElement.getAttribute('data-theme') || 'dark';
-        const next = cur==='dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', next);
-        try { localStorage.setItem('theme', next); } catch {}
-        btnTheme.textContent = next==='dark' ? '☾' : '☀';
-      };
-    }
-
     function init(){
-      applyThemeInit();
       state.me = decodeUser();
       if (!state.me) { alert('Inicia sesión'); location.href='login.html'; return; }
-      document.getElementById('userLabel').textContent = state.me?.nombre || `UID ${uidOf(state.me)}` || 'Usuario';
       loadLocalLog();
       initMap();
       bindEvents();
@@ -184,8 +136,8 @@
 
     /* ===== Fichaje (Geolocalización) ===== */
     function bindEvents(){
-      document.getElementById('btnFichar').onclick = doCheckIn;
-      document.getElementById('goTop').onclick = (e)=>{ e.preventDefault(); window.scrollTo({ top:0, behavior:'smooth' }); };
+      const btn = document.getElementById('btnFichar');
+      if (btn) btn.onclick = doCheckIn;
     }
 
     function doCheckIn(){
