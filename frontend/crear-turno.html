@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -12,7 +12,7 @@
   <main class="container">
     <section class="hero">
       <h1 class="title">Crear Turno para una Tienda</h1>
-      <p class="subtitle">Rangos de 30 minutos y mÃ¡ximo 4 horas.</p>
+      <p class="subtitle">Rangos de 30 minutos y máximo 8 horas.</p>
     </section>
 
     <div class="card">
@@ -20,7 +20,11 @@
         <label for="tienda">Tienda</label>
         <select id="tienda" required></select>
 
-        
+        <label for="codigo">Código</label>
+        <input id="codigo" maxlength="8" placeholder="Ej. A" required />
+
+        <label for="descripcion">Descripción</label>
+        <input id="descripcion" maxlength="255" placeholder="Describe el turno" required />
 
         <label>Hora de inicio</label>
         <div class="row" style="grid-template-columns: 120px 30px 120px; align-items:center;">
@@ -112,12 +116,26 @@
     };
     const hIni = document.getElementById('horaInicioHora');
     const hFin = document.getElementById('horaFinHora');
+    const codigoInput = document.getElementById('codigo');
+    const descripcionInput = document.getElementById('descripcion');
     fillHours(hIni); fillHours(hFin);
+    if (codigoInput) {
+      codigoInput.addEventListener('input', () => {
+        codigoInput.value = codigoInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      });
+    }
 
     document.getElementById('formTurno').onsubmit = async (e) => {
       e.preventDefault();
       const horaInicio = `${document.getElementById('horaInicioHora').value}:${document.getElementById('horaInicioMin').value}`;
       const horaFin = `${document.getElementById('horaFinHora').value}:${document.getElementById('horaFinMin').value}`;
+
+      const codigoInput = document.getElementById('codigo');
+      const descripcionInput = document.getElementById('descripcion');
+      const codigo = codigoInput ? codigoInput.value.trim().toUpperCase() : '';
+      const descripcion = descripcionInput ? descripcionInput.value.trim() : '';
+      if (codigoInput) codigoInput.value = codigo;
+
 
       const toMinutes = (hhmm) => {
         const [hh, mm] = String(hhmm).split(':').map(Number);
@@ -131,6 +149,16 @@
       const error = (m) => { msgEl.textContent = 'Error: ' + m; msgEl.className = 'status err'; };
       const ok = (m) => { msgEl.textContent = m; msgEl.className = 'status ok'; };
 
+      if (!codigo) {
+        return error('Debes indicar un codigo para el turno.');
+      }
+      if (codigo.length > 8 || !/^[A-Z0-9]+$/.test(codigo)) {
+        return error('El codigo solo admite letras o numeros (maximo 8).');
+      }
+      if (!descripcion) {
+        return error('Agrega una descripcion para el turno.');
+      }
+
       if (!isHalfHour(start) || !isHalfHour(end)) {
         return error('Las horas deben estar en intervalos de 30 minutos.');
       }
@@ -138,14 +166,16 @@
       if (duration <= 0) {
         return error('La hora de fin debe ser posterior a la de inicio.');
       }
-      if (duration > 240) {
-        return error('La duraciÃ³n mÃ¡xima de un turno es de 4 horas.');
+      if (duration > 480) {
+        return error('La duración máxima de un turno es de 8 horas.');
       }
 
       const datos = {
         id_tienda: parseInt(document.getElementById('tienda').value),
         hora_inicio: horaInicio,
         hora_fin: horaFin,
+        codigo,
+        descripcion,
       };
 
       const res = await fetch('http://localhost:3000/api/turnos', {

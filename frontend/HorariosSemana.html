@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Semana · Horarios por hora</title>
+  <title>Semana Â· Horarios por hora</title>
   <!-- Reutiliza tu styles.css con las variables y componentes que enviaste -->
   <link rel="stylesheet" href="styles.css" />
   <style>
-    /* Ajustes específicos de esta vista (respetando tu sistema de diseño) */
+    /* Ajustes especÃ­ficos de esta vista (respetando tu sistema de diseÃ±o) */
     .controls { display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:12px; }
     .controls .actions { display:flex; gap:8px; align-items:end; justify-content:flex-end; }
     .timeline-wrap { overflow:auto; border:1px solid var(--border); border-radius:12px; background: var(--bg-soft); }
@@ -36,8 +36,8 @@
 <body>
   <main class="container">
     <section class="hero">
-      <h1 class="title">Semana · Horarios por hora</h1>
-      <p class="subtitle">Vista de cuadrante horario por días (L–D) y totales de horas por empleado.</p>
+      <h1 class="title">Semana Â· Horarios por hora</h1>
+      <p class="subtitle">Vista de cuadrante horario por dÃ­as (L-D) y totales de horas por empleado.</p>
     </section>
 
     <div class="card" style="margin-bottom:14px;">
@@ -149,7 +149,7 @@
     /* ================= Carga inicial ================= */
     async function init(){
       state.me = decodeUser();
-      if (!state.me) { alert('Inicia sesión'); location.href='login.html'; return; }
+      if (!state.me) { alert('Inicia sesiÃ³n'); location.href='login.html'; return; }
       await loadTiendas();
       inpSemana.value = ymd(new Date());
       renderLegend();
@@ -164,7 +164,7 @@
       }catch{ state.tiendas = []; }
       selTienda.innerHTML = '';
       for (const t of state.tiendas){ const o=document.createElement('option'); o.value=t.id_tienda; o.textContent=t.nombre; selTienda.appendChild(o); }
-      // Autoselección para jefe/encargado
+      // AutoselecciÃ³n para jefe/encargado
       const rol = String(state.me?.rol||'').toLowerCase();
       const myUid = uidOf(state.me);
       if (rol==='jefe' || rol==='encargado'){
@@ -186,7 +186,7 @@
       legendBox.innerHTML='';
       const tips = [
         'Clic en un nombre para resaltar todas sus franjas',
-        'Pasa el ratón por la pastilla para ver el tramo',
+        'Pasa el ratÃ³n por la pastilla para ver el tramo',
         'Rango horario configurable (ej. 06-23)'
       ];
       for (const t of tips){ const b=document.createElement('span'); b.className='badge'; b.textContent=t; legendBox.appendChild(b); }
@@ -223,12 +223,12 @@
 
       const thead = document.createElement('thead');
       const thr = document.createElement('tr');
-      const th0 = document.createElement('th'); th0.className='day-col'; th0.textContent='Día'; thr.appendChild(th0);
+      const th0 = document.createElement('th'); th0.className='day-col'; th0.textContent='DÃ­a'; thr.appendChild(th0);
       for (let h=H1; h<H2; h++){ const th=document.createElement('th'); th.className='hour-col'; th.textContent=hToLabel(h); thr.appendChild(th); }
       thead.appendChild(thr); grid.appendChild(thead);
 
       const tbody = document.createElement('tbody');
-      // Índice rápido por día
+      // Ãndice rÃ¡pido por dÃ­a
       const byDay = new Map();
       for (const a of state.asignaciones){ if (!byDay.has(a.fecha)) byDay.set(a.fecha, []); byDay.get(a.fecha).push(a); }
 
@@ -243,7 +243,7 @@
           // Ordena por nombre
           list.sort((a,b)=> a.nombre.localeCompare(b.nombre));
           for (const a of list){
-            const pill = document.createElement('span'); pill.className='pill'; pill.title = `${a.nombre} · ${a.hora_inicio}–${a.hora_fin}`;
+            const pill = document.createElement('span'); pill.className='pill'; pill.title = `${a.nombre} Â· ${a.hora_inicio}-${a.hora_fin}`;
             pill.dataset.emp = String(a.id_trabajador);
             pill.innerHTML = `<span class="dot" aria-hidden="true"></span><span>${a.nombre}</span>`;
             pill.onclick = ()=> toggleHighlightEmployee(a.id_trabajador);
@@ -258,7 +258,7 @@
 
     function toESDayLabel(iso){
       const d = new Date(iso+'T00:00:00');
-      const L = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+      const L = ['Lun','Mar','MiÃ©','Jue','Vie','SÃ¡b','Dom'];
       const i = (d.getDay()+6)%7; // L=0
       return `${L[i]}`;
     }

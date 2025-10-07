@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/connection');
 const { authenticate } = require('../middleware/auth');
+const { syncTurnoCodigo } = require('../lib/sync_turno_codigo');
 
 async function getTiendaIdByTurno(knex, id_turno) {
   const row = await knex('Turnos').where({ id_turno }).first();
@@ -13,6 +14,7 @@ async function isJefeDeTienda(knex, uid, id_tienda) {
   const t = await knex('Tiendas').where({ id_tienda, id_jefe: uid }).first();
   return !!t;
 }
+
 
 // Obtener turnos de una tienda
 router.get('/tienda/:id_tienda', async (req, res) => {
@@ -45,7 +47,7 @@ router.get('/trabajadores/:id_tienda', async (req, res) => {
   }
 });
 
-// (Eliminados) Endpoints de asignación de turnos
+// (Eliminados) Endpoints de asignaci??n de turnos
 
 // Obtener requerimientos para una semana y tienda
 router.get('/requerimientos', async (req, res) => {
@@ -110,7 +112,7 @@ router.post('/requerimientos', authenticate, async (req, res) => {
   }
 });
 
-// Crear turno con validaciones de 15 minutos y 4 horas
+// Crear turno con validaciones de 15 minutos y 8 horas
 function ensureAdmin(req) {
   const rol = req.user?.rol?.toLowerCase();
   return rol === 'admin' || rol === 'administrador';
@@ -118,24 +120,41 @@ function ensureAdmin(req) {
 
 router.post('/', authenticate, async (req, res) => {
   try {
-    const { id_tienda, id_tipo_turno, hora_inicio, hora_fin } = req.body;
-    // Permisos: admin o jefe de esa tienda
+    let { id_tienda, id_tipo_turno, hora_inicio, hora_fin, codigo, descripcion } = req.body || {};
+
     const isAdmin = ensureAdmin(req);
     let allowed = isAdmin;
+    const tiendaId = parseInt(id_tienda, 10);
+
     if (!allowed) {
-      if (!id_tienda) return res.status(400).json({ error: 'id_tienda es obligatorio' });
-      allowed = await isJefeDeTienda(db, req.user?.uid, id_tienda);
+      if (!tiendaId) return res.status(400).json({ error: 'id_tienda es obligatorio' });
+      allowed = await isJefeDeTienda(db, req.user?.uid, tiendaId);
     }
     if (!allowed) return res.status(403).json({ error: 'No autorizado' });
 
-    if (!id_tienda || !hora_inicio || !hora_fin) {
+    if (!tiendaId || !hora_inicio || !hora_fin) {
       return res.status(400).json({ error: 'Faltan campos obligatorios' });
     }
 
-    // Validaciones: intervalos de 30 minutos y duración máxima 4 horas
+    codigo = String(codigo || '').trim().toUpperCase();
+    if (!codigo) {
+      return res.status(400).json({ error: 'El codigo es obligatorio' });
+    }
+    if (codigo.length > 8 || !/^[A-Z0-9]+$/.test(codigo)) {
+      return res.status(400).json({ error: 'El codigo debe ser alfanumerico (sin espacios) y hasta 8 caracteres' });
+    }
+
+    descripcion = String(descripcion || '').trim();
+    if (descripcion.length > 255) {
+      return res.status(400).json({ error: 'La descripcion no puede superar 255 caracteres' });
+    }
+
     const toMinutes = (hhmm) => {
-      const [hh, mm] = String(hhmm).split(':').map(Number);
-      if (Number.isNaN(hh) || Number.isNaN(mm)) return NaN;
+      const parts = String(hhmm).split(':');
+      if (parts.length !== 2) return NaN;
+      const hh = Number(parts[0]);
+      const mm = Number(parts[1]);
+      if (!Number.isFinite(hh) || !Number.isFinite(mm)) return NaN;
       return hh * 60 + mm;
     };
 
@@ -143,7 +162,7 @@ router.post('/', authenticate, async (req, res) => {
     const endMin = toMinutes(hora_fin);
 
     if (Number.isNaN(startMin) || Number.isNaN(endMin)) {
-      return res.status(400).json({ error: 'Formato de hora inválido (use HH:MM)' });
+      return res.status(400).json({ error: 'Formato de hora invalido (use HH:MM)' });
     }
 
     const isHalfHour = (m) => m % 30 === 0;
@@ -153,24 +172,37 @@ router.post('/', authenticate, async (req, res) => {
 
     const duration = endMin - startMin;
     if (duration <= 0) {
-      return res
-        .status(400)
-        .json({ error: 'La hora de fin debe ser posterior a la de inicio' });
+      return res.status(400).json({ error: 'La hora de fin debe ser posterior a la de inicio' });
     }
-    if (duration > 240) {
-      return res
-        .status(400)
-        .json({ error: 'La duración máxima de un turno es de 4 horas' });
+    if (duration > 480) {
+      return res.status(400).json({ error: 'La duraci??n m??xima de un turno es de 8 horas' });
     }
 
-    const [id_turno] = await db('Turnos').insert({
-      id_tienda,
-      id_tipo_turno: id_tipo_turno || null,
+    const existing = await db('Turnos')
+      .where({ id_tienda: tiendaId, codigo })
+      .first();
+    if (existing) {
+      return res.status(400).json({ error: 'Ya existe un turno con ese codigo en la tienda' });
+    }
+
+    const data = {
+      id_tienda: tiendaId,
+      id_tipo_turno: id_tipo_turno ? Number(id_tipo_turno) || null : null,
       hora_inicio,
       hora_fin,
-    });
+      codigo,
+      descripcion,
+    };
 
-    res.json({ mensaje: 'Turno creado correctamente', id_turno });
+    const inserted = await db('Turnos').insert(data);
+    let id_turno = inserted && inserted[0];
+    if (id_turno && typeof id_turno === 'object') {
+      id_turno = id_turno.id_turno || id_turno.id;
+    }
+
+    await syncTurnoCodigo(db, { codigo, descripcion, durationMinutes: duration });
+
+    res.json({ mensaje: 'Turno creado correctamente', id_turno, codigo, descripcion, hora_inicio, hora_fin });
   } catch (error) {
     console.error('Error al crear turno:', error);
     res.status(500).json({ error: 'Error interno al crear turno' });
@@ -178,3 +210,7 @@ router.post('/', authenticate, async (req, res) => {
 });
 
 module.exports = router;
+
+
+
+

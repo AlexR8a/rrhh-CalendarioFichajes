@@ -3,33 +3,48 @@
     <div class="container nav">
       <a class="brand" href="index.html" aria-label="Inicio">
         <div class="logo" aria-hidden="true"></div>
-        <div>RRHH App</div>
+        <div class="brand-copy">
+          <span class="brand-title">RRHH App</span>
+          <span class="brand-subtitle">Gestión de personal y turnos</span>
+        </div>
       </a>
-      <nav class="navlinks" aria-label="Navegacion principal">
-        <a href="ver-usuarios.html">Usuarios</a>
-        <a href="ver-tiendas.html">Tiendas</a>
-        <a href="asignar-turnos.html">Turnos</a>
-        <a href="calendario-usuario.html">Mi calendario</a>
-        <a href="fichajes.html">Fichajes</a>
-        <a href="crear-turno.html">Crear turno</a>
-        <a href="HorariosSemana.html">Semana &ndash; Horarios</a>
+      <nav class="navlinks" aria-label="Navegación principal">
+        <a href="ver-usuarios.html"><span class="nav-icon" aria-hidden="true">👥</span><span>Usuarios</span></a>
+        <a href="ver-tiendas.html"><span class="nav-icon" aria-hidden="true">🏬</span><span>Tiendas</span></a>
+        <a href="asignar-turnos.html"><span class="nav-icon" aria-hidden="true">🗂️</span><span>Turnos</span></a>
+        <a href="HorariosSemana.html"><span class="nav-icon" aria-hidden="true">🗓️</span><span>Semana · Horarios</span></a>
+        <a href="calendario-usuario.html"><span class="nav-icon" aria-hidden="true">📆</span><span>Mi calendario</span></a>
+        <a href="fichajes.html"><span class="nav-icon" aria-hidden="true">📍</span><span>Fichajes</span></a>
+        <a href="crear-turno.html"><span class="nav-icon" aria-hidden="true">➕</span><span>Crear turno</span></a>
       </nav>
-      <button class="btn btn-outline" id="btnTheme" title="Cambiar tema"></button>
-      <div class="user" id="userBox">
-        <span id="userLabel">No autenticado</span>
-        <a class="btn btn-outline" href="login.html" id="btnLogin">Entrar</a>
-        <button class="btn" id="btnLogout" style="display:none">Salir</button>
+      <div class="nav-controls">
+        <button class="btn btn-outline nav-toggle" id="btnNav" aria-label="Mostrar u ocultar navegación" aria-expanded="false">☰</button>
+        <button class="btn btn-outline" id="btnTheme" title="Cambiar tema"></button>
+        <div class="user" id="userBox">
+          <span id="userLabel">No autenticado</span>
+          <a class="btn btn-outline" href="login.html" id="btnLogin">Entrar</a>
+          <button class="btn" id="btnLogout" style="display:none">Salir</button>
+        </div>
       </div>
     </div>
   `;
 
   const FOOTER_HTML = `
     <div class="container foot">
-      <div>&copy; <span id="y"></span> RRHH App &ndash; Gestion interna</div>
-      <div>
-        <a href="login.html">Iniciar sesion</a>
-        <span aria-hidden="true">&#183;</span>
-        <a href="#" id="goTop">Ir arriba</a>
+      <div class="foot-left">
+        <div class="foot-brand">
+          <div class="logo logo-sm" aria-hidden="true"></div>
+          <div>
+            <strong>RRHH App</strong>
+            <span>Gestión interna</span>
+          </div>
+        </div>
+        <div class="foot-meta">© <span id="y"></span> RRHH App</div>
+      </div>
+      <div class="foot-right">
+        <a href="login.html">Iniciar sesión</a>
+        <span aria-hidden="true">·</span>
+        <a href="#" id="goTop">Volver arriba</a>
       </div>
     </div>
   `;
@@ -76,13 +91,14 @@
     const theme = stored || (prefersDark ? 'dark' : 'light');
     setTheme(theme);
     const btn = byId('btnTheme');
-    if (btn){
+    if (btn && !btn.dataset.bound){
       btn.addEventListener('click', () => {
         let current = null;
         try { current = localStorage.getItem('theme'); } catch {}
         if (!current) current = document.documentElement.getAttribute('data-theme') || 'dark';
         setTheme(current === 'dark' ? 'light' : 'dark');
       });
+      btn.dataset.bound = '1';
     }
   }
 
@@ -103,7 +119,7 @@
         const user = JSON.parse(userRaw);
         if (userLabel) userLabel.innerHTML = `${user?.nombre || user?.email || 'Usuario'} <span class="role">${(user?.rol || '').toString()}</span>`;
       } catch {
-        if (userLabel) userLabel.textContent = 'Sesion activa';
+        if (userLabel) userLabel.textContent = 'Sesión activa';
       }
       if (btnLogin) btnLogin.style.display = 'none';
       if (btnLogout) btnLogout.style.display = 'inline-flex';
@@ -127,17 +143,57 @@
     const y = byId('y');
     if (y) y.textContent = new Date().getFullYear();
     const goTop = byId('goTop');
-    if (goTop){
+    if (goTop && !goTop.dataset.bound){
       goTop.addEventListener('click', (event) => {
         event.preventDefault();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
+      goTop.dataset.bound = '1';
     }
+  }
+
+  function wireNavToggle(){
+    const btn = byId('btnNav');
+    const nav = document.querySelector('header.site-header .navlinks');
+    if (!btn || !nav || btn.dataset.bound) return;
+
+    const close = () => {
+      nav.classList.remove('is-open');
+      btn.setAttribute('aria-expanded', 'false');
+    };
+
+    btn.addEventListener('click', (event) => {
+      event.preventDefault();
+      const open = !nav.classList.contains('is-open');
+      nav.classList.toggle('is-open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!nav.classList.contains('is-open')) return;
+      if (nav.contains(event.target) || btn.contains(event.target)) return;
+      close();
+    });
+
+    nav.addEventListener('click', (event) => {
+      if (event.target.closest('a')) {
+        close();
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 900) {
+        close();
+      }
+    });
+
+    btn.dataset.bound = '1';
   }
 
   function init(){
     ensureLayout();
     initTheme();
+    wireNavToggle();
     renderSession();
     wireFooterUtilities();
   }
@@ -148,4 +204,3 @@
     init();
   }
 })();
-

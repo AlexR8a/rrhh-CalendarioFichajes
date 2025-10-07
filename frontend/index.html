@@ -5,83 +5,82 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RRHH App</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    .hero { margin-top: 48px; max-width: 640px; }
+    .hero .subtitle { font-size: 16px; line-height: 1.5; }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+    .hero-actions .btn { min-width: 160px; }
+    .home-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 24px; }
+    .home-card { display: flex; gap: 14px; align-items: flex-start; }
+    .home-card .icon { font-size: 22px; line-height: 1; }
+    .home-card h3 { margin: 0; font-size: 16px; font-weight: 700; }
+    .home-card p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    @media (max-width: 720px) {
+      .hero { margin-top: 32px; }
+      .hero-actions { justify-content: flex-start; }
+    }
+  </style>
 </head>
 <body>
-  
 
   <main class="container">
     <section class="hero">
-      <h1 class="title">Gestión de Personal y Turnos</h1>
-      <p class="subtitle">Administra tiendas, usuarios, turnos y fichajes desde una interfaz simple.</p>
+      <h1 class="title">Gestión de personal sin complicaciones</h1>
+      <p class="subtitle">Centraliza la planificación de turnos, el control horario y la información de tus equipos en un mismo panel pensado para recursos humanos y responsables de tienda.</p>
+      <div class="hero-actions">
+        <a class="btn" href="asignar-turnos.html">Planificar turnos</a>
+        <a class="btn btn-outline" href="ver-tiendas.html">Ver tiendas</a>
+      </div>
     </section>
 
     <section>
-      <h2>Acciones rápidas</h2>
-      <div class="grid">
-        <a class="card col-4" href="crear-trabajador.html">
-          <div class="icon">👤</div>
+      <h2>Accesos rápidos</h2>
+      <div class="home-grid">
+        <a class="card home-card" href="crear-trabajador.html">
+          <span class="icon" aria-hidden="true">👤</span>
           <div>
             <h3>Crear trabajador</h3>
-            <p>Dar de alta empleados y asignarlos a tienda.</p>
+            <p>Da de alta empleados y asígnalos a su tienda.</p>
           </div>
         </a>
-        <a class="card col-4" href="ver-usuarios.html">
-          <div class="icon">📋</div>
+        <a class="card home-card" href="ver-usuarios.html">
+          <span class="icon" aria-hidden="true">📋</span>
           <div>
             <h3>Ver usuarios</h3>
-            <p>Listado general, roles y tienda asociada.</p>
+            <p>Consulta roles, datos de contacto y accesos.</p>
           </div>
         </a>
-        <a class="card col-4" href="crear-tienda.html">
-          <div class="icon">🏬</div>
+        <a class="card home-card" href="crear-tienda.html">
+          <span class="icon" aria-hidden="true">🏬</span>
           <div>
             <h3>Crear tienda</h3>
-            <p>Alta de nuevas tiendas y su responsable.</p>
+            <p>Configura nuevas ubicaciones y responsables.</p>
           </div>
         </a>
-
-        <a class="card col-6" href="ver-tiendas.html">
-          <div class="icon">🏢</div>
-          <div>
-            <h3>Ver tiendas</h3>
-            <p>Detalle de tiendas, dirección y jefe asignado.</p>
-          </div>
-        </a>
-        <a class="card col-6" href="editar-tienda.html">
-          <div class="icon">✏️</div>
-          <div>
-            <h3>Editar tienda</h3>
-            <p>Actualizar datos y asignar jefe de tienda.</p>
-          </div>
-        </a>
-
-        <a class="card col-6" href="crear-turno.html">
-          <div class="icon">🕒</div>
+        <a class="card home-card" href="crear-turno.html">
+          <span class="icon" aria-hidden="true">🕒</span>
           <div>
             <h3>Crear turno</h3>
-            <p>Rangos de 15 min y máximo 4 horas.</p>
+            <p>Define plantillas y códigos de turno en minutos.</p>
           </div>
         </a>
-        <a class="card col-6" href="asignar-turnos.html">
-          <div class="icon">📅</div>
-          <div>
-            <h3>Planificación anual</h3>
-            <p>Asigna turnos por código y aplica patrones.</p>
-          </div>
-        </a>
-
-        <a class="card col-6" href="HorariosSemana.html">
-          <div class="icon">🗓️</div>
+        <a class="card home-card" href="HorariosSemana.html">
+          <span class="icon" aria-hidden="true">🗓️</span>
           <div>
             <h3>Semana · Horarios</h3>
-            <p>Ver cuadrante por horas y totales semanales por empleado.</p>
+            <p>Revisa el cuadrante semanal y las horas asignadas.</p>
+          </div>
+        </a>
+        <a class="card home-card" href="fichajes.html">
+          <span class="icon" aria-hidden="true">📍</span>
+          <div>
+            <h3>Fichajes</h3>
+            <p>Registra entradas con ubicación y hora en segundos.</p>
           </div>
         </a>
       </div>
     </section>
   </main>
-
-  
 
   <script src="app.js"></script>
 </body>
