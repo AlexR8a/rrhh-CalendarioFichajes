@@ -11,11 +11,26 @@ exports.up = async function up(knex) {
 
   async function ensureTurno(hora_inicio, hora_fin) {
     let row = await knex('Turnos').where({ id_tienda: TIENDA_ID, hora_inicio, hora_fin }).first();
-    if (!row) {
-      const [id_turno] = await knex('Turnos').insert({ id_tienda: TIENDA_ID, id_tipo_turno: null, hora_inicio, hora_fin });
-      return id_turno;
+    let id_turno = row ? row.id_turno || row.id || row.ID : null;
+    if (!id_turno) {
+      const inserted = await knex('Turnos').insert({ id_tienda: TIENDA_ID, id_tipo_turno: null, hora_inicio, hora_fin });
+      if (Array.isArray(inserted) && inserted.length) {
+        const first = inserted[0];
+        id_turno = typeof first === 'object' ? first.id_turno || first.id || first.ID : first;
+      } else {
+        id_turno = inserted;
+      }
     }
-    return row.id_turno || row.id || row.ID;
+    if (!id_turno) return id_turno;
+    try {
+      const tramo = await knex('TurnosTramos').where({ id_turno }).first();
+      if (!tramo) {
+        await knex('TurnosTramos').insert({ id_turno, orden: 1, hora_inicio, hora_fin });
+      }
+    } catch (_) {
+      /* tabla opcional segun despliegue */
+    }
+    return id_turno;
   }
 
   async function upsertRequerimiento(id_turno, cantidad) {
@@ -80,4 +95,6 @@ exports.down = async function down(knex) {
     }
   }
 };
+
+
 

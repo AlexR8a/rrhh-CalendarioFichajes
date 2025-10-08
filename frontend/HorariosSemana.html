@@ -3,11 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Semana · Horarios por hora</title>
-  <!-- Reutiliza tu styles.css con las variables y componentes que enviaste -->
+  <title>Semana - Horarios por hora</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
-    /* Ajustes específicos de esta vista (respetando tu sistema de diseño) */
     .controls { display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:12px; }
     .controls .actions { display:flex; gap:8px; align-items:end; justify-content:flex-end; }
     .timeline-wrap { overflow:auto; border:1px solid var(--border); border-radius:12px; background: var(--bg-soft); }
@@ -19,14 +17,12 @@
     .slot { min-height: 52px; padding: 6px; border-left:1px solid var(--border); }
     .slot .pill { display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border:1px solid var(--border); border-radius:999px; margin: 2px; background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); font-size:12px; }
     .slot .pill .dot { width:8px; height:8px; border-radius:999px; background: var(--brand-2); box-shadow: 0 0 0 2px rgba(52,211,153,.15); }
-    .slot .pill .hrs { color: var(--muted); font-weight:700; font-size:11px; }
+    .slot .pill .hrs { color: var(--muted); font-weight:700; font-size:11px; padding-left:4px; }
     .legend-mini { display:flex; gap:8px; flex-wrap:wrap; }
     .legend-mini .badge { padding:4px 8px; border:1px solid var(--border); border-radius:8px; font-size:12px; }
     .totals { display:grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap:16px; }
     .totals .card { grid-column: span 4; }
-
     .muted-small { font-size:12px; color: var(--muted); }
-
     @media (max-width: 900px){
       .controls { grid-template-columns: 1fr; }
       .totals .card { grid-column: span 12; }
@@ -36,8 +32,8 @@
 <body>
   <main class="container">
     <section class="hero">
-      <h1 class="title">Semana · Horarios por hora</h1>
-      <p class="subtitle">Vista de cuadrante horario por días (L-D) y totales de horas por empleado.</p>
+      <h1 class="title">Semana - Horarios por hora</h1>
+      <p class="subtitle">Vista de cuadrante horario por dias y totales de horas por empleado.</p>
     </section>
 
     <div class="card" style="margin-bottom:14px;">
@@ -55,9 +51,9 @@
           <input id="inpHoras" placeholder="08-22" value="08-22" />
         </div>
         <div class="actions">
-          <button class="btn btn-secondary" id="btnPrev">? Semana anterior</button>
+          <button class="btn btn-secondary" id="btnPrev"><< Semana anterior</button>
           <button class="btn" id="btnHoy">Hoy</button>
-          <button class="btn btn-secondary" id="btnNext">Semana siguiente ?</button>
+          <button class="btn btn-secondary" id="btnNext">Semana siguiente >></button>
         </div>
       </div>
       <div class="status muted-small" id="statusBox"></div>
@@ -79,9 +75,8 @@
 
   <script src="app.js"></script>
   <script>
-    /* ================= Utilidades comunes ================= */
     const API = 'http://localhost:3000/api';
-    const HOR = API + '/horarios'; // NUEVO: endpoint esperado para esta vista
+    const HOR = API + '/horarios';
 
     function getToken(){ try { return localStorage.getItem('token') || ''; } catch { return ''; } }
     function authHeaders(){ const h={'Content-Type':'application/json'}; const t=getToken(); if(t) h['Authorization'] = `Bearer ${t}`; return h; }
@@ -101,38 +96,63 @@
 
     function uidOf(u){ const n = Number(u?.uid || u?.id_usuario || u?.id || u?.ID); return Number.isFinite(n) ? n : null; }
     function ymd(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const dd=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${dd}`; }
-    function monday(d){ const x=new Date(d); const wd=(x.getDay()+6)%7; x.setDate(x.getDate()-wd); x.setHours(0,0,0,0); return x; }
-    function addDays(d, n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+    function monday(d){ const x = new Date(d); const wd = (x.getDay()+6)%7; x.setDate(x.getDate()-wd); x.setHours(0,0,0,0); return x; }
+    function addDays(date, days){ const d=new Date(date); d.setDate(d.getDate()+days); return d; }
 
     function parseHourRange(str){
-      const m = (str||'').match(/^(\d{2})\s*[-:]\s*(\d{2})$/);
-      let a=8, b=22; if (m){ a=+m[1]; b=+m[2]; }
-      a = Math.max(0, Math.min(23,a)); b = Math.max(a+1, Math.min(24,b));
+      if (!str) return [8,22];
+      const match = String(str).trim().match(/^(\d{1,2})[-:](\d{1,2})$/);
+      if (!match) return [8,22];
+      let a = Math.max(0, Math.min(23, Number(match[1])));
+      let b = Math.max(0, Math.min(24, Number(match[2])));
+      if (b <= a) b = Math.min(24, a + 1);
       return [a,b];
     }
 
     function hToLabel(h){ return String(h).padStart(2,'0') + ':00'; }
 
     function overlapHours(startHHMM, endHHMM, slotHour){
-      // devuelve true si el intervalo [start,end) solapa con [slotHour, slotHour+1)
       const sH = +startHHMM.slice(0,2), sM = +startHHMM.slice(3,5);
       const eH = +endHHMM.slice(0,2), eM = +endHHMM.slice(3,5);
       const s = sH + sM/60; const e = eH + eM/60; const a = slotHour; const b = slotHour+1;
       return Math.max(s,a) < Math.min(e,b);
     }
 
-    /* ================= Estado ================= */
+    function getTramos(asignacion){
+      const base = Array.isArray(asignacion?.tramos) && asignacion.tramos.length
+        ? asignacion.tramos
+        : [{ orden: 1, hora_inicio: asignacion?.hora_inicio, hora_fin: asignacion?.hora_fin }];
+      return base
+        .map((t, idx) => {
+          const start = String(t?.hora_inicio || '').slice(0,5);
+          const end = String(t?.hora_fin || '').slice(0,5);
+          if (!start || !end) return null;
+          return { orden: Number(t?.orden) || idx + 1, hora_inicio: start, hora_fin: end };
+        })
+        .filter(Boolean)
+        .sort((a,b)=> (a.orden || 0) - (b.orden || 0));
+    }
+
+    function assignmentOverlapsHour(asignacion, hour){
+      const tramos = getTramos(asignacion);
+      return tramos.some((tramo) => overlapHours(tramo.hora_inicio, tramo.hora_fin, hour));
+    }
+
+    function tramoTooltip(asignacion){
+      const tramos = getTramos(asignacion);
+      if (!tramos.length) return `${asignacion?.hora_inicio || ''}-${asignacion?.hora_fin || ''}`;
+      return tramos.map((t, idx) => `Tramo ${idx + 1}: ${t.hora_inicio}-${t.hora_fin}`).join(' | ');
+    }
+
     const state = {
       me: null,
       tiendas: [],
-      empleados: [], // [{id_trabajador, nombre}]
+      empleados: [],
       weekStart: monday(new Date()),
       range: [8,22],
-      // datos de servidor
-      asignaciones: [], // [{id_trabajador, nombre, fecha:"YYYY-MM-DD", hora_inicio:"HH:MM", hora_fin:"HH:MM"}]
+      asignaciones: [],
     };
 
-    /* ================= DOM refs ================= */
     const selTienda = document.getElementById('selTienda');
     const inpSemana = document.getElementById('inpSemana');
     const inpHoras = document.getElementById('inpHoras');
@@ -146,10 +166,9 @@
 
     function showStatus(msg, ok=true){ statusBox.textContent = msg||''; statusBox.className = 'muted-small ' + (ok?'status ok':'status err'); }
 
-    /* ================= Carga inicial ================= */
     async function init(){
       state.me = decodeUser();
-      if (!state.me) { alert('Inicia sesión'); location.href='login.html'; return; }
+      if (!state.me) { alert('Inicia sesion'); location.href='login.html'; return; }
       await loadTiendas();
       inpSemana.value = ymd(new Date());
       renderLegend();
@@ -164,7 +183,6 @@
       }catch{ state.tiendas = []; }
       selTienda.innerHTML = '';
       for (const t of state.tiendas){ const o=document.createElement('option'); o.value=t.id_tienda; o.textContent=t.nombre; selTienda.appendChild(o); }
-      // Autoselección para jefe/encargado
       const rol = String(state.me?.rol||'').toLowerCase();
       const myUid = uidOf(state.me);
       if (rol==='jefe' || rol==='encargado'){
@@ -186,7 +204,7 @@
       legendBox.innerHTML='';
       const tips = [
         'Clic en un nombre para resaltar todas sus franjas',
-        'Pasa el ratón por la pastilla para ver el tramo',
+        'Cada tramo se muestra en su bloque horario correspondiente',
         'Rango horario configurable (ej. 06-23)'
       ];
       for (const t of tips){ const b=document.createElement('span'); b.className='badge'; b.textContent=t; legendBox.appendChild(b); }
@@ -199,14 +217,12 @@
       const endISO = ymd(addDays(state.weekStart, 6));
       showStatus('Cargando semana...');
       try{
-        // Endpoint esperado: GET /api/horarios/semana?tienda={id}&inicio=YYYY-MM-DD
         const url = `${HOR}/semana?tienda=${encodeURIComponent(tienda)}&inicio=${encodeURIComponent(startISO)}`;
         const res = await fetch(url, { headers: authHeaders() });
         if (!res.ok){ const j = await res.json().catch(()=>({})); showStatus(j.error||res.statusText, false); return; }
         const json = await res.json();
         state.empleados   = json.empleados   || [];
         state.asignaciones = json.asignaciones || [];
-        // Estructura esperada de asignaciones: { id_trabajador, nombre, fecha:"YYYY-MM-DD", hora_inicio:"HH:MM", hora_fin:"HH:MM" }
         state.range = parseHourRange(inpHoras.value);
         renderGrid();
         renderTotals();
@@ -223,12 +239,11 @@
 
       const thead = document.createElement('thead');
       const thr = document.createElement('tr');
-      const th0 = document.createElement('th'); th0.className='day-col'; th0.textContent='Día'; thr.appendChild(th0);
+      const th0 = document.createElement('th'); th0.className='day-col'; th0.textContent='Dia'; thr.appendChild(th0);
       for (let h=H1; h<H2; h++){ const th=document.createElement('th'); th.className='hour-col'; th.textContent=hToLabel(h); thr.appendChild(th); }
       thead.appendChild(thr); grid.appendChild(thead);
 
       const tbody = document.createElement('tbody');
-      // Índice rápido por día
       const byDay = new Map();
       for (const a of state.asignaciones){ if (!byDay.has(a.fecha)) byDay.set(a.fecha, []); byDay.get(a.fecha).push(a); }
 
@@ -239,13 +254,27 @@
         tr.appendChild(tdDay);
         for (let h=H1; h<H2; h++){
           const td = document.createElement('td'); td.className='slot';
-          const list = (byDay.get(iso)||[]).filter(a => overlapHours(a.hora_inicio, a.hora_fin, h));
-          // Ordena por nombre
+          const list = (byDay.get(iso)||[]).filter(a => assignmentOverlapsHour(a, h));
           list.sort((a,b)=> a.nombre.localeCompare(b.nombre));
           for (const a of list){
-            const pill = document.createElement('span'); pill.className='pill'; pill.title = `${a.nombre} · ${a.hora_inicio}-${a.hora_fin}`;
+            const pill = document.createElement('span');
+            pill.className='pill';
             pill.dataset.emp = String(a.id_trabajador);
-            pill.innerHTML = `<span class="dot" aria-hidden="true"></span><span>${a.nombre}</span>`;
+            const tramos = getTramos(a);
+            pill.title = `${a.nombre} -> ${tramoTooltip(a)}`;
+            const dot = document.createElement('span');
+            dot.className='dot';
+            dot.setAttribute('aria-hidden','true');
+            const name = document.createElement('span');
+            name.textContent = a.nombre;
+            pill.appendChild(dot);
+            pill.appendChild(name);
+            if (tramos.length > 1){
+              const badge = document.createElement('span');
+              badge.className='hrs';
+              badge.textContent = `${tramos.length} tramos`;
+              pill.appendChild(badge);
+            }
             pill.onclick = ()=> toggleHighlightEmployee(a.id_trabajador);
             td.appendChild(pill);
           }
@@ -258,15 +287,14 @@
 
     function toESDayLabel(iso){
       const d = new Date(iso+'T00:00:00');
-      const L = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-      const i = (d.getDay()+6)%7; // L=0
+      const L = ['Lun','Mar','Mie','Jue','Vie','Sab','Dom'];
+      const i = (d.getDay()+6)%7;
       return `${L[i]}`;
     }
 
     function toggleHighlightEmployee(empId){
       const pills = document.querySelectorAll(`.pill`);
       const on = !document.body.classList.contains('hl-'+empId);
-      // reset
       document.body.className = document.body.className.replace(/\bhl-\d+\b/g,'').trim();
       if (on){ document.body.classList.add('hl-'+empId); }
       pills.forEach(p=>{
@@ -280,19 +308,22 @@
       totalsBox.innerHTML='';
       const map = new Map();
       for (const a of state.asignaciones){
-        if (!a || !a.hora_inicio || !a.hora_fin) continue;
-        const start = (+a.hora_inicio.slice(0,2)) + (+a.hora_inicio.slice(3,5))/60;
-        const end = (+a.hora_fin.slice(0,2)) + (+a.hora_fin.slice(3,5))/60;
-        let hours = end - start;
-        if (hours <= 0) hours += 24;
-        hours = Math.max(0, hours);
+        const tramos = getTramos(a);
+        if (!tramos.length) continue;
         if (!map.has(a.id_trabajador)){
           map.set(a.id_trabajador, { nombre: a.nombre, horas: 0, porDia: new Map() });
         }
         const info = map.get(a.id_trabajador);
-        info.horas += hours;
-        const current = info.porDia.get(a.fecha) || 0;
-        info.porDia.set(a.fecha, current + hours);
+        for (const tramo of tramos){
+          const startMin = toMinutes(tramo.hora_inicio);
+          const endMin = toMinutes(tramo.hora_fin);
+          if (startMin === null || endMin === null) continue;
+          let hours = (endMin - startMin) / 60;
+          if (hours <= 0) hours += 24;
+          info.horas += hours;
+          const current = info.porDia.get(a.fecha) || 0;
+          info.porDia.set(a.fecha, current + hours);
+        }
       }
       const sorted = [...map.entries()].sort((a,b)=> b[1].horas - a[1].horas);
       for (const [id, info] of sorted){

@@ -5,7 +5,31 @@ async function ensureStore({nombre,direccion,id_jefe=null}){let t=await db('Tien
 async function setStoreManager(id_tienda,id_jefe){await db('Tiendas').where({id_tienda}).update({id_jefe})}
 async function ensureWorkerInStore(id_usuario,id_tienda){const ex=await db('Trabajadores').where({id_trabajador:id_usuario}).first();if(ex)return;const hoy=new Date().toISOString().slice(0,10);await db('Trabajadores').insert({id_trabajador:id_usuario,id_tienda,fecha_alta:hoy})}
 async function ensureTipoTurno(nombre){const r=await db('TiposTurno').where({nombre}).first();if(r)return r.id_tipo_turno||r.id||r.ID;const [id]=await db('TiposTurno').insert({nombre});return id}
-async function ensureTurno({id_tienda,id_tipo_turno=null,hora_inicio,hora_fin}){let q=db('Turnos').where({id_tienda,hora_inicio,hora_fin});if(id_tipo_turno)q=q.andWhere({id_tipo_turno});const e=await q.first();if(e)return e.id_turno||e.id||e.ID;const [id]=await db('Turnos').insert({id_tienda,id_tipo_turno,hora_inicio,hora_fin});return id}
+async function ensureTurno({id_tienda,id_tipo_turno=null,hora_inicio,hora_fin}){
+  let q = db('Turnos').where({ id_tienda, hora_inicio, hora_fin });
+  if (id_tipo_turno) q = q.andWhere({ id_tipo_turno });
+  const existing = await q.first();
+  let id_turno = existing ? existing.id_turno || existing.id || existing.ID : null;
+  if (!id_turno){
+    const inserted = await db('Turnos').insert({ id_tienda, id_tipo_turno, hora_inicio, hora_fin });
+    if (Array.isArray(inserted) && inserted.length){
+      const first = inserted[0];
+      id_turno = typeof first === 'object' ? first.id_turno || first.id || first.ID : first;
+    } else {
+      id_turno = inserted;
+    }
+  }
+  if (!id_turno) return id_turno;
+  try {
+    const tramo = await db('TurnosTramos').where({ id_turno }).first();
+    if (!tramo){
+      await db('TurnosTramos').insert({ id_turno, orden: 1, hora_inicio, hora_fin });
+    }
+  } catch (_) {
+    /* tabla opcional durante migraciones */
+  }
+  return id_turno;
+}
 async function ensureTurnoCodigo({codigo,descripcion='',horas=0,activo=true}){const e=await db('TurnosCodigo').where({codigo}).first();if(e){return{created:false,record:{id_turno_codigo:e.id_turno_codigo||e.id||e.ID,codigo:e.codigo,descripcion:e.descripcion,horas:Number(e.horas??horas),activo:e.activo!==undefined?!!e.activo:true}}}const inserted=await db('TurnosCodigo').insert({codigo,descripcion,horas,activo});let id=inserted&&inserted[0];if(id&&typeof id==='object'){id=id.id_turno_codigo||id.id||id.ID}if(!id){const row=await db('TurnosCodigo').where({codigo}).first();return{created:true,record:{id_turno_codigo:row?.id_turno_codigo||row?.id||row?.ID,codigo:row?.codigo??codigo,descripcion:row?.descripcion??descripcion,horas:Number(row?.horas??horas),activo:row?.activo!==undefined?!!row?.activo:true}}}return{created:true,record:{id_turno_codigo:id,codigo,descripcion,horas:Number(horas),activo}}}
 function mondayOfWeek(s){const d=new Date(`${s}T00:00:00`);const g=d.getDay();const diff=(g===0?-6:1-g);d.setDate(d.getDate()+diff);return d.toISOString().slice(0,10)}
 function weekDates(a){const r=[];const s=new Date(`${a}T00:00:00`);for(let i=0;i<7;i++){const d=new Date(s);d.setDate(d.getDate()+i);r.push(d.toISOString().slice(0,10))}return r}
@@ -236,3 +260,4 @@ async function main(){try{
   await db.destroy();
 }}
 main();
+

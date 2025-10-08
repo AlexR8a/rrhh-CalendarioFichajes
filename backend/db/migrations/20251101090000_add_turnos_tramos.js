@@ -3,7 +3,7 @@ exports.up = async function up(knex) {
   if (!hasTable) {
     await knex.schema.createTable('TurnosTramos', (table) => {
       table.increments('id_tramo').primary();
-      table.integer('id_turno').unsigned().notNullable();
+      table.integer('id_turno').notNullable();
       table.integer('orden').unsigned().notNullable().defaultTo(1);
       table.time('hora_inicio').notNullable();
       table.time('hora_fin').notNullable();
@@ -33,7 +33,7 @@ exports.up = async function up(knex) {
           bindings.push(item.id_turno, item.orden, item.hora_inicio, item.hora_fin);
         });
         await knex.raw(
-          INSERT IGNORE INTO TurnosTramos (id_turno, orden, hora_inicio, hora_fin) VALUES ,
+          `INSERT IGNORE INTO TurnosTramos (id_turno, orden, hora_inicio, hora_fin) VALUES ${values}`,
           bindings
         );
       }
@@ -55,3 +55,6 @@ function chunkArray(arr, size) {
   }
   return res;
 }
+
+
+

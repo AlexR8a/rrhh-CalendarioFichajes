@@ -86,9 +86,18 @@ function defaultSlotForHours(hours) {
   const start = DEFAULT_START_MINUTES;
   const end = Math.min(start + mins, 24 * 60);
   const endMinutes = end >= 24 * 60 ? 23 * 60 + 59 : end;
+  const inicio = minutesToHHMM(start);
+  const fin = minutesToHHMM(endMinutes);
   return {
-    hora_inicio: minutesToHHMM(start),
-    hora_fin: minutesToHHMM(endMinutes),
+    hora_inicio: inicio,
+    hora_fin: fin,
+    tramos: [
+      {
+        orden: 1,
+        hora_inicio: inicio,
+        hora_fin: fin,
+      },
+    ],
   };
 }
 
@@ -98,16 +107,46 @@ function pickTurnoByDuration(durationMinutes, turnosByDuration) {
   }
   const list = turnosByDuration.get(durationMinutes);
   if (!list || !list.length) return null;
+
   const sorted = list
     .slice()
-    .filter((t) => toMinutes(t.hora_inicio) !== null && toMinutes(t.hora_fin) !== null)
-    .sort((a, b) => (toMinutes(a.hora_inicio) ?? 0) - (toMinutes(b.hora_inicio) ?? 0));
+    .sort((a, b) => {
+      const aStart = toMinutes((a.tramos && a.tramos[0]?.hora_inicio) || a.hora_inicio);
+      const bStart = toMinutes((b.tramos && b.tramos[0]?.hora_inicio) || b.hora_inicio);
+      return (aStart ?? 0) - (bStart ?? 0);
+    });
+
   const candidates = sorted.length ? sorted : list;
   const chosen = candidates.find((t) => {
-    const start = toMinutes(t.hora_inicio);
-    return start !== null && start >= DEFAULT_START_MINUTES;
+    const start = toMinutes((t.tramos && t.tramos[0]?.hora_inicio) || t.hora_inicio);
+    return Number.isFinite(start) && start >= DEFAULT_START_MINUTES;
   });
   return chosen || candidates[0] || null;
+}
+
+function normalizeTramos(list) {
+  if (!Array.isArray(list)) return [];
+  return list
+    .map((item, idx) => {
+      const start = toHHMM(item?.hora_inicio);
+      const end = toHHMM(item?.hora_fin);
+      if (!start || !end) return null;
+      return {
+        orden: Number(item?.orden) || idx + 1,
+        hora_inicio: start,
+        hora_fin: end,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => (a.orden || 0) - (b.orden || 0));
+}
+
+function totalMinutesFromTramos(tramos) {
+  if (!Array.isArray(tramos) || !tramos.length) return 0;
+  return tramos.reduce((acc, tramo) => {
+    const mins = diffMinutes(tramo.hora_inicio, tramo.hora_fin);
+    return acc + (Number.isFinite(mins) ? mins : 0);
+  }, 0);
 }
 
 // GET /api/horarios/semana?tienda=ID&inicio=YYYY-MM-DD
@@ -138,23 +177,62 @@ router.get('/semana', async (req, res) => {
     }));
     const empleadoMap = new Map(empleados.map((emp) => [emp.id_trabajador, emp]));
 
-    const turnosRows = await db('Turnos')
-      .where('id_tienda', tiendaId)
-      .select('id_turno', 'hora_inicio', 'hora_fin');
+    const turnosRows = await db('Turnos as T')
+      .where('T.id_tienda', tiendaId)
+      .select('T.id_turno', 'T.hora_inicio', 'T.hora_fin', 'T.codigo', 'T.descripcion');
 
-    const turnosByDuration = new Map();
-    for (const row of turnosRows) {
+    const turnoIds = turnosRows
+      .map((row) => row.id_turno)
+      .filter((id) => id !== null && id !== undefined);
+
+    let tramosRows = [];
+    if (turnoIds.length) {
+      tramosRows = await db('TurnosTramos')
+        .whereIn('id_turno', turnoIds)
+        .orderBy('id_turno', 'asc')
+        .orderBy('orden', 'asc');
+    }
+
+    const tramosByTurno = new Map();
+    for (const row of tramosRows) {
       const start = toHHMM(row.hora_inicio);
       const end = toHHMM(row.hora_fin);
-      const duration = diffMinutes(start, end);
-      if (!start || !end || !duration) continue;
-      const info = {
-        id_turno: row.id_turno || null,
+      if (!start || !end) continue;
+      if (!tramosByTurno.has(row.id_turno)) tramosByTurno.set(row.id_turno, []);
+      const list = tramosByTurno.get(row.id_turno);
+      list.push({
+        orden: Number(row.orden) || list.length + 1,
         hora_inicio: start,
         hora_fin: end,
+      });
+    }
+    for (const list of tramosByTurno.values()) {
+      list.sort((a, b) => (a.orden || 0) - (b.orden || 0));
+    }
+
+    const turnoById = new Map();
+    const turnosByDuration = new Map();
+    for (const row of turnosRows) {
+      const baseTramos = normalizeTramos(tramosByTurno.get(row.id_turno));
+      const fallback = normalizeTramos([
+        { orden: 1, hora_inicio: row.hora_inicio, hora_fin: row.hora_fin },
+      ]);
+      const tramos = baseTramos.length ? baseTramos : fallback;
+      const duration = totalMinutesFromTramos(tramos);
+      const info = {
+        id_turno: row.id_turno || null,
+        hora_inicio: tramos.length ? tramos[0].hora_inicio : toHHMM(row.hora_inicio),
+        hora_fin: tramos.length ? tramos[tramos.length - 1].hora_fin : toHHMM(row.hora_fin),
+        tramos,
+        duration,
+        codigo: row.codigo || null,
+        descripcion: row.descripcion || null,
       };
-      if (!turnosByDuration.has(duration)) turnosByDuration.set(duration, []);
-      turnosByDuration.get(duration).push(info);
+      turnoById.set(info.id_turno, info);
+      if (duration > 0) {
+        if (!turnosByDuration.has(duration)) turnosByDuration.set(duration, []);
+        turnosByDuration.get(duration).push(info);
+      }
     }
 
     const asignacionesRows = await db('AsignacionesTurno as A')
@@ -179,8 +257,21 @@ router.get('/semana', async (req, res) => {
     const asignaciones = asignacionesRows
       .map((row) => {
         const fecha = toISODate(row.fecha);
-        const horaInicio = toHHMM(row.hora_inicio);
-        const horaFin = toHHMM(row.hora_fin);
+        const turnoInfo = row.id_turno ? turnoById.get(row.id_turno) : null;
+        const baseTramos = turnoInfo?.tramos?.length
+          ? turnoInfo.tramos
+          : normalizeTramos([
+              { orden: 1, hora_inicio: row.hora_inicio, hora_fin: row.hora_fin },
+            ]);
+        const tramos = baseTramos
+          .map((t, idx) => ({
+            orden: Number(t.orden) || idx + 1,
+            hora_inicio: t.hora_inicio,
+            hora_fin: t.hora_fin,
+          }))
+          .filter((t) => t.hora_inicio && t.hora_fin);
+        const horaInicio = tramos.length ? tramos[0].hora_inicio : toHHMM(row.hora_inicio);
+        const horaFin = tramos.length ? tramos[tramos.length - 1].hora_fin : toHHMM(row.hora_fin);
         if (!fecha || !horaInicio || !horaFin) return null;
         const empleado = empleadoMap.get(row.id_trabajador);
         return {
@@ -191,7 +282,8 @@ router.get('/semana', async (req, res) => {
           fecha,
           hora_inicio: horaInicio,
           hora_fin: horaFin,
-          codigo: null,
+          tramos,
+          codigo: turnoInfo?.codigo || null,
           origen: 'turno',
         };
       })
@@ -232,14 +324,20 @@ router.get('/semana', async (req, res) => {
 
       const durationMinutes = Math.round(horas * 60);
       const turno = pickTurnoByDuration(durationMinutes, turnosByDuration);
-      let horaInicio = turno ? toHHMM(turno.hora_inicio) : null;
-      let horaFin = turno ? toHHMM(turno.hora_fin) : null;
+      let horaInicio = turno?.tramos?.length ? turno.tramos[0].hora_inicio : toHHMM(turno?.hora_inicio);
+      let horaFin = turno?.tramos?.length ? turno.tramos[turno.tramos.length - 1].hora_fin : toHHMM(turno?.hora_fin);
+      let tramos = turno?.tramos?.length
+        ? turno.tramos.map((t, idx) => ({ orden: Number(t.orden) || idx + 1, hora_inicio: t.hora_inicio, hora_fin: t.hora_fin }))
+        : [];
 
       if (!horaInicio || !horaFin) {
         const slot = defaultSlotForHours(horas);
         if (!slot) continue;
         horaInicio = slot.hora_inicio;
         horaFin = slot.hora_fin;
+        tramos = slot.tramos;
+      } else if (!tramos.length) {
+        tramos = [{ orden: 1, hora_inicio: horaInicio, hora_fin: horaFin }];
       }
 
       const empleado = empleadoMap.get(trabajadorId);
@@ -253,6 +351,7 @@ router.get('/semana', async (req, res) => {
         fecha,
         hora_inicio: horaInicio,
         hora_fin: horaFin,
+        tramos,
         codigo: row.codigo || null,
         origen: 'planificacion',
       });

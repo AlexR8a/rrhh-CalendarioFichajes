@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Crear Turno - RRHH</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    .tramo-row { border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:12px; background: var(--bg-soft); }
+    .tramo-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+    .tramo-title { font-weight:700; }
+    .tramo-row .time-block { display:flex; flex-direction:column; gap:6px; }
+    .tramo-row .time-inputs { display:flex; align-items:center; gap:6px; }
+    .tramo-row select { width:100%; }
+    .tramo-actions { display:flex; justify-content:flex-end; margin-bottom:12px; }
+    .tramo-actions .btn { min-width:140px; }
+  </style>
 </head>
 <body>
   
@@ -12,7 +22,7 @@
   <main class="container">
     <section class="hero">
       <h1 class="title">Crear Turno para una Tienda</h1>
-      <p class="subtitle">Rangos de 30 minutos y máximo 8 horas.</p>
+      <p class="subtitle">Define uno o varios tramos (turno partido) en bloques de 30 minutos.</p>
     </section>
 
     <div class="card">
@@ -20,30 +30,16 @@
         <label for="tienda">Tienda</label>
         <select id="tienda" required></select>
 
-        <label for="codigo">Código</label>
+        <label for="codigo">Codigo</label>
         <input id="codigo" maxlength="8" placeholder="Ej. A" required />
 
-        <label for="descripcion">Descripción</label>
+        <label for="descripcion">Descripcion</label>
         <input id="descripcion" maxlength="255" placeholder="Describe el turno" required />
 
-        <label>Hora de inicio</label>
-        <div class="row" style="grid-template-columns: 120px 30px 120px; align-items:center;">
-          <select id="horaInicioHora" required></select>
-          <div class="muted" style="text-align:center;"> :</div>
-          <select id="horaInicioMin" required>
-            <option value="00">00</option>
-            <option value="30">30</option>
-          </select>
-        </div>
-
-        <label>Hora de fin</label>
-        <div class="row" style="grid-template-columns: 120px 30px 120px; align-items:center;">
-          <select id="horaFinHora" required></select>
-          <div class="muted" style="text-align:center;">:</div>
-          <select id="horaFinMin" required>
-            <option value="00">00</option>
-            <option value="30">30</option>
-          </select>
+        <label>Tramos del turno</label>
+        <div id="tramosContainer"></div>
+        <div class="tramo-actions">
+          <button type="button" class="btn btn-secondary" id="btnAddTramo">Anadir tramo</button>
         </div>
 
         <div class="actions">
@@ -91,7 +87,6 @@
         opt.textContent = t.nombre;
         selTienda.appendChild(opt);
       });
-      // Si es jefe, autoseleccionar y bloquear su tienda
       if (String(me.rol).toLowerCase() === 'jefe') {
         const mine = tiendas.find(t => Number(t.id_jefe) === Number(me.uid));
         if (!mine) {
@@ -101,11 +96,8 @@
           selTienda.disabled = true;
         }
       }
-
-      
     }
 
-    // Rellenar horas 00..23
     const fillHours = (sel) => {
       for (let h = 0; h < 24; h++) {
         const v = String(h).padStart(2, '0');
@@ -114,41 +106,128 @@
         sel.appendChild(opt);
       }
     };
-    const hIni = document.getElementById('horaInicioHora');
-    const hFin = document.getElementById('horaFinHora');
+
     const codigoInput = document.getElementById('codigo');
     const descripcionInput = document.getElementById('descripcion');
-    fillHours(hIni); fillHours(hFin);
     if (codigoInput) {
       codigoInput.addEventListener('input', () => {
         codigoInput.value = codigoInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
       });
     }
 
+    const tramosState = [
+      { inicioHora: '09', inicioMin: '00', finHora: '13', finMin: '00' },
+    ];
+    const MAX_TRAMOS = 3;
+    const tramosContainer = document.getElementById('tramosContainer');
+    const btnAddTramo = document.getElementById('btnAddTramo');
+
+    function createMinuteSelect(value) {
+      const sel = document.createElement('select');
+      sel.innerHTML = '<option value="00">00</option><option value="30">30</option>';
+      sel.value = value;
+      return sel;
+    }
+
+    function renderTramos() {
+      tramosContainer.innerHTML = '';
+      tramosState.forEach((tramo, index) => {
+        const row = document.createElement('div');
+        row.className = 'tramo-row';
+
+        const head = document.createElement('div');
+        head.className = 'tramo-head';
+        const title = document.createElement('span');
+        title.className = 'tramo-title';
+        title.textContent = `Tramo ${index + 1}`;
+        head.appendChild(title);
+        if (tramosState.length > 1) {
+          const btnRemove = document.createElement('button');
+          btnRemove.type = 'button';
+          btnRemove.className = 'btn btn-outline';
+          btnRemove.textContent = 'Quitar';
+          btnRemove.onclick = () => {
+            tramosState.splice(index, 1);
+            renderTramos();
+          };
+          head.appendChild(btnRemove);
+        }
+        row.appendChild(head);
+
+        const grid = document.createElement('div');
+        grid.className = 'row';
+        grid.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
+        grid.style.gap = '12px';
+
+        const startBlock = document.createElement('div');
+        startBlock.className = 'time-block';
+        const startLabel = document.createElement('span');
+        startLabel.className = 'muted-small';
+        startLabel.textContent = 'Inicio';
+        startBlock.appendChild(startLabel);
+        const startInputs = document.createElement('div');
+        startInputs.className = 'time-inputs';
+        const startHourSel = document.createElement('select');
+        fillHours(startHourSel); startHourSel.value = tramo.inicioHora;
+        startHourSel.onchange = (e) => { tramo.inicioHora = e.target.value; };
+        const startMinSel = createMinuteSelect(tramo.inicioMin);
+        startMinSel.onchange = (e) => { tramo.inicioMin = e.target.value; };
+        startInputs.appendChild(startHourSel);
+        startInputs.appendChild(document.createTextNode(':'));
+        startInputs.appendChild(startMinSel);
+        startBlock.appendChild(startInputs);
+
+        const endBlock = document.createElement('div');
+        endBlock.className = 'time-block';
+        const endLabel = document.createElement('span');
+        endLabel.className = 'muted-small';
+        endLabel.textContent = 'Fin';
+        endBlock.appendChild(endLabel);
+        const endInputs = document.createElement('div');
+        endInputs.className = 'time-inputs';
+        const endHourSel = document.createElement('select');
+        fillHours(endHourSel); endHourSel.value = tramo.finHora;
+        endHourSel.onchange = (e) => { tramo.finHora = e.target.value; };
+        const endMinSel = createMinuteSelect(tramo.finMin);
+        endMinSel.onchange = (e) => { tramo.finMin = e.target.value; };
+        endInputs.appendChild(endHourSel);
+        endInputs.appendChild(document.createTextNode(':'));
+        endInputs.appendChild(endMinSel);
+        endBlock.appendChild(endInputs);
+
+        grid.appendChild(startBlock);
+        grid.appendChild(endBlock);
+        row.appendChild(grid);
+        tramosContainer.appendChild(row);
+      });
+      btnAddTramo.disabled = tramosState.length >= MAX_TRAMOS;
+    }
+
+    btnAddTramo.onclick = () => {
+      if (tramosState.length >= MAX_TRAMOS) return;
+      const last = tramosState[tramosState.length - 1];
+      const nextStartHour = String(Math.min(23, Number(last.finHora))).padStart(2, '0');
+      const nextStartMin = last.finMin;
+      const tentativeEndHour = Math.min(23, Number(nextStartHour) + 4);
+      const nextEndHour = tentativeEndHour <= Number(nextStartHour) ? (Number(nextStartHour) + 1) : tentativeEndHour;
+      tramosState.push({
+        inicioHora: nextStartHour,
+        inicioMin: nextStartMin,
+        finHora: String(Math.min(23, nextEndHour)).padStart(2, '0'),
+        finMin: nextStartMin,
+      });
+      renderTramos();
+    };
+
+    const msgEl = document.getElementById('mensaje');
+    const error = (m) => { msgEl.textContent = 'Error: ' + m; msgEl.className = 'status err'; };
+    const ok = (m) => { msgEl.textContent = m; msgEl.className = 'status ok'; };
+
     document.getElementById('formTurno').onsubmit = async (e) => {
       e.preventDefault();
-      const horaInicio = `${document.getElementById('horaInicioHora').value}:${document.getElementById('horaInicioMin').value}`;
-      const horaFin = `${document.getElementById('horaFinHora').value}:${document.getElementById('horaFinMin').value}`;
 
-      const codigoInput = document.getElementById('codigo');
-      const descripcionInput = document.getElementById('descripcion');
       const codigo = codigoInput ? codigoInput.value.trim().toUpperCase() : '';
       const descripcion = descripcionInput ? descripcionInput.value.trim() : '';
-      if (codigoInput) codigoInput.value = codigo;
-
-
-      const toMinutes = (hhmm) => {
-        const [hh, mm] = String(hhmm).split(':').map(Number);
-        return hh * 60 + mm;
-      };
-      const start = toMinutes(horaInicio);
-      const end = toMinutes(horaFin);
-      const isHalfHour = (m) => m % 30 === 0;
-
-      const msgEl = document.getElementById('mensaje');
-      const error = (m) => { msgEl.textContent = 'Error: ' + m; msgEl.className = 'status err'; };
-      const ok = (m) => { msgEl.textContent = m; msgEl.className = 'status ok'; };
-
       if (!codigo) {
         return error('Debes indicar un codigo para el turno.');
       }
@@ -159,23 +238,53 @@
         return error('Agrega una descripcion para el turno.');
       }
 
-      if (!isHalfHour(start) || !isHalfHour(end)) {
-        return error('Las horas deben estar en intervalos de 30 minutos.');
-      }
-      const duration = end - start;
-      if (duration <= 0) {
-        return error('La hora de fin debe ser posterior a la de inicio.');
-      }
-      if (duration > 480) {
-        return error('La duración máxima de un turno es de 8 horas.');
+      const toMinutes = (hhmm) => {
+        const [hh, mm] = String(hhmm).split(':').map(Number);
+        if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+        return hh * 60 + mm;
+      };
+
+      const tramos = tramosState.map((t) => ({
+        hora_inicio: `${t.inicioHora}:${t.inicioMin}`,
+        hora_fin: `${t.finHora}:${t.finMin}`,
+      }));
+
+      let invalid = false;
+      const sanitized = tramos
+        .map((t, idx) => {
+          const start = toMinutes(t.hora_inicio);
+          const end = toMinutes(t.hora_fin);
+          if (start === null || end === null) {
+            error(`Tramo ${idx + 1}: formato de hora invalido.`);
+            invalid = true;
+            return null;
+          }
+          if (end <= start) {
+            error(`Tramo ${idx + 1}: la hora de fin debe ser posterior a la de inicio.`);
+            invalid = true;
+            return null;
+          }
+          return { ...t, start, end };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.start - b.start);
+
+      if (invalid || !sanitized.length) return;
+
+      for (let i = 1; i < sanitized.length; i++) {
+        if (sanitized[i].start < sanitized[i - 1].end) {
+          error(`Tramo ${i + 1}: no puede solaparse con el tramo anterior.`);
+          return;
+        }
       }
 
       const datos = {
         id_tienda: parseInt(document.getElementById('tienda').value),
-        hora_inicio: horaInicio,
-        hora_fin: horaFin,
         codigo,
         descripcion,
+        hora_inicio: sanitized[0].hora_inicio,
+        hora_fin: sanitized[sanitized.length - 1].hora_fin,
+        tramos: sanitized.map(({ hora_inicio, hora_fin }) => ({ hora_inicio, hora_fin })),
       };
 
       const res = await fetch('http://localhost:3000/api/turnos', {
@@ -192,11 +301,11 @@
       }
     };
 
+    renderTramos();
     cargarDatos();
   </script>
 </body>
 </html>
-
 
 
 
